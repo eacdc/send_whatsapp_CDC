@@ -52,6 +52,25 @@ body {
   flex: 1;
 }
 
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.header-info span {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-info strong {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .app-main {
   flex: 1;
   padding: 0.5rem;
@@ -87,24 +106,6 @@ body {
 
 .page-header h2 {
   margin: 0;
-}
-
-.info {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.info p {
-  margin: 0.25rem 0;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-.info strong {
-  color: var(--text);
 }
 
 .form-row {
@@ -248,7 +249,7 @@ button.secondary:hover:not(:disabled) {
 }
 
 .table-container-wrapper {
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   background: rgba(15, 23, 42, 0.4);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -258,7 +259,7 @@ button.secondary:hover:not(:disabled) {
 .table-scroll {
   overflow-x: auto;
   overflow-y: auto;
-  max-height: 600px;
+  max-height: calc(100vh - 280px);
 }
 
 .table-scroll::-webkit-scrollbar {
@@ -279,7 +280,6 @@ button.secondary:hover:not(:disabled) {
   width: 100%;
   border-collapse: collapse;
   background: transparent;
-  min-width: 800px;
 }
 
 .data-table thead {
@@ -291,23 +291,24 @@ button.secondary:hover:not(:disabled) {
 }
 
 .data-table th {
-  padding: 0.75rem;
+  padding: 0.35rem 0.4rem;
   text-align: left;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   color: var(--muted);
   border-bottom: 2px solid var(--border);
   white-space: nowrap;
 }
 
 .data-table td {
-  padding: 0.75rem;
+  padding: 0.35rem 0.4rem;
   border-bottom: 1px solid var(--border);
-  font-size: 0.9rem;
+  font-size: 0.65rem;
   color: var(--text);
   white-space: nowrap;
+  line-height: 1.3;
 }
 
 .data-table tbody tr:hover {
@@ -331,27 +332,29 @@ button.secondary:hover:not(:disabled) {
 .column-header {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .column-header-label {
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   color: var(--muted);
+  line-height: 1.1;
 }
 
 .column-search {
-  padding: 0.5rem;
+  padding: 0.3rem 0.4rem;
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: 0.65rem;
   font-family: inherit;
   width: 100%;
   transition: border-color 0.2s ease, background 0.2s ease;
+  line-height: 1.2;
 }
 
 .column-search:focus {
@@ -445,12 +448,12 @@ button.secondary:hover:not(:disabled) {
 
 /* Deselect All Button in Select Column Header */
 .deselect-all-btn {
-  padding: 0.4rem 0.75rem;
+  padding: 0.3rem 0.5rem;
   background: var(--error);
   color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 0.85rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -465,13 +468,13 @@ button.secondary:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.3rem;
 }
 
 /* Checkbox styling */
 .data-table input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   cursor: pointer;
   accent-color: var(--primary);
 }
@@ -606,23 +609,29 @@ button.secondary:hover:not(:disabled) {
   cursor: pointer;
 }
 
-/* Edit Date Button */
-.edit-date-btn {
-  background: none !important;
-  border: none !important;
-  cursor: pointer;
-  font-size: 1rem;
-  padding: 0.25rem;
-  opacity: 0.7;
-  transition: opacity 0.2s ease, transform 0.1s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* Editable Date Input */
+.editable-date-input {
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  text-align: left;
 }
 
-.edit-date-btn:hover {
-  opacity: 1;
-  transform: scale(1.1);
+.editable-date-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.editable-date-input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
 }
 
 @media (max-width: 640px) {

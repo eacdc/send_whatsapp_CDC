@@ -53,8 +53,9 @@
   const loginForm = document.getElementById('login-form');
   const loginError = document.getElementById('login-error');
   const btnLogout = document.getElementById('btn-logout');
-  const infoUsername = document.getElementById('info-username');
-  const infoDateRange = document.getElementById('info-date-range');
+  const headerInfo = document.getElementById('header-info');
+  const headerUsername = document.getElementById('header-username');
+  const headerDateRange = document.getElementById('header-date-range');
   const pendingJobsTable = document.getElementById('pending-jobs-table');
   const pendingJobsThead = document.getElementById('pending-jobs-thead');
   const pendingJobsTbody = document.getElementById('pending-jobs-tbody');
@@ -83,6 +84,8 @@
   let selectedRows = new Set(); // Store selected row IDs
   let mobileColumnIndex = -1; // Index of Concern Mobile No column
   let finalDeliveryDateColumnIndex = -1; // Index of Final Delivery Date column
+  let jobNameColumnIndex = -1; // Index of Job Name column
+  let clientNameColumnIndex = -1; // Index of Client Name column
 
   // Fetch pending data from backend
   async function fetchPendingData(username) {
@@ -156,6 +159,9 @@
     loginSection.classList.remove('hidden');
     dashboardSection.classList.add('hidden');
     btnLogout.classList.add('hidden');
+    if (headerInfo) {
+      headerInfo.classList.add('hidden');
+    }
     loginError.textContent = '';
   }
 
@@ -163,17 +169,20 @@
     loginSection.classList.add('hidden');
     dashboardSection.classList.remove('hidden');
     btnLogout.classList.remove('hidden');
-    if (infoUsername) {
-      infoUsername.textContent = username;
+    if (headerInfo) {
+      headerInfo.classList.remove('hidden');
     }
-    if (infoDateRange) {
+    if (headerUsername) {
+      headerUsername.textContent = username;
+    }
+    if (headerDateRange) {
       if (dateRange) {
         // Format dates to DD-MM-YYYY
         const startDateFormatted = formatDate(dateRange.startDate);
         const endDateFormatted = formatDate(dateRange.endDate);
-        infoDateRange.textContent = `${startDateFormatted} to ${endDateFormatted}`;
+        headerDateRange.textContent = `${startDateFormatted} to ${endDateFormatted}`;
       } else {
-        infoDateRange.textContent = 'N/A';
+        headerDateRange.textContent = 'N/A';
       }
     }
     // Display pending jobs if data is available
@@ -356,9 +365,31 @@
         }
       }
       
+      // Find the index of Job Name column
+      jobNameColumnIndex = columnsToShow.findIndex(key => {
+        const colName = formatColumnName(key).toLowerCase();
+        const keyLower = key.toLowerCase();
+        return colName.includes('job name') || 
+               keyLower.includes('jobname') ||
+               keyLower.includes('job_name') ||
+               (colName.includes('job') && colName.includes('name'));
+      });
+      
+      // Find the index of Client Name column
+      clientNameColumnIndex = columnsToShow.findIndex(key => {
+        const colName = formatColumnName(key).toLowerCase();
+        const keyLower = key.toLowerCase();
+        return colName.includes('client name') || 
+               keyLower.includes('clientname') ||
+               keyLower.includes('client_name') ||
+               (colName.includes('client') && colName.includes('name'));
+      });
+      
       console.log('Column detection:', {
         mobileColumnIndex,
         finalDeliveryDateColumnIndex,
+        jobNameColumnIndex,
+        clientNameColumnIndex,
         allColumns: columnsToShow.map((k, idx) => ({
           index: idx,
           key: k,
@@ -415,13 +446,22 @@
       headerDiv.appendChild(label);
       headerDiv.appendChild(searchInput);
       th.appendChild(headerDiv);
+      
+      // Set column width for Job Name and Client Name columns to be the same
+      if (index === jobNameColumnIndex || index === clientNameColumnIndex) {
+        // Use a fixed width that matches client name column width
+        th.style.width = '150px';
+        th.style.maxWidth = '150px';
+        th.style.minWidth = '150px';
+      }
+      
       headerRow.appendChild(th);
       
       // Insert Select checkbox column header AFTER Concern Mobile No column
       if (index === mobileColumnIndex) {
         const selectTh = document.createElement('th');
         selectTh.className = 'select-column-header';
-        selectTh.style.width = '120px';
+        selectTh.style.width = '90px';
         selectTh.style.textAlign = 'center';
         
         const selectHeaderDiv = document.createElement('div');
@@ -430,7 +470,7 @@
         const selectLabel = document.createElement('div');
         selectLabel.className = 'column-header-label';
         selectLabel.textContent = 'Select';
-        selectLabel.style.marginBottom = '0.5rem';
+        selectLabel.style.marginBottom = '0.3rem';
         
         const deselectAllBtn = document.createElement('button');
         deselectAllBtn.id = 'btn-deselect-all';
@@ -523,60 +563,75 @@
         const value = row[key];
         const columnName = formatColumnName(key);
         
-        // Check if this is Final Delivery Date column - add edit icon
+        // Check if this is Final Delivery Date column - add editable input
         if (colIndex === finalDeliveryDateColumnIndex && finalDeliveryDateColumnIndex >= 0) {
-          console.log('Adding edit icon to Final Delivery Date cell', {
+          console.log('Adding editable input to Final Delivery Date cell', {
             colIndex,
             finalDeliveryDateColumnIndex,
             columnName,
             value
           });
           
-          const cellContent = document.createElement('div');
-          cellContent.style.display = 'flex';
-          cellContent.style.alignItems = 'center';
-          cellContent.style.gap = '0.3rem';
-          cellContent.style.justifyContent = 'flex-start';
+          const dateInput = document.createElement('input');
+          dateInput.type = 'text';
+          dateInput.className = 'editable-date-input';
+          dateInput.placeholder = 'DD-MM-YYYY';
           
-          const dateText = document.createElement('span');
+          // Set initial value in DD-MM-YYYY format
           if (value !== null && value !== undefined) {
-            dateText.textContent = formatDate(value);
+            dateInput.value = formatDate(value);
           } else {
-            dateText.textContent = '';
+            dateInput.value = '';
           }
-          // Remove flex: 1 so date doesn't expand and push icon away
           
-          const editIcon = document.createElement('button');
-          editIcon.className = 'edit-date-btn';
-          editIcon.innerHTML = '✏️';
-          editIcon.type = 'button';
-          editIcon.title = 'Edit delivery date';
-          editIcon.style.background = 'none';
-          editIcon.style.border = 'none';
-          editIcon.style.cursor = 'pointer';
-          editIcon.style.fontSize = '1rem';
-          editIcon.style.padding = '0.25rem';
-          editIcon.style.opacity = '0.7';
-          editIcon.style.transition = 'opacity 0.2s ease';
-          editIcon.addEventListener('mouseenter', () => {
-            editIcon.style.opacity = '1';
-          });
-          editIcon.addEventListener('mouseleave', () => {
-            editIcon.style.opacity = '0.7';
-          });
-          editIcon.addEventListener('click', () => {
-            const orderBookingDetailsID = row.OrderBookingDetailsID || row.orderBookingDetailsID;
-            console.log('Edit icon clicked', { orderBookingDetailsID, value });
-            if (orderBookingDetailsID) {
-              showDatePickerModal(orderBookingDetailsID, value, dateText);
-            } else {
-              alert('OrderBookingDetailsID not found');
+          // Store the orderBookingDetailsID for later use
+          const orderBookingDetailsID = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+          
+          // Handle Enter key press
+          dateInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              dateInput.blur(); // Trigger blur event which will handle the update
             }
           });
           
-          cellContent.appendChild(dateText);
-          cellContent.appendChild(editIcon);
-          td.appendChild(cellContent);
+          // Handle blur (when user clicks outside)
+          dateInput.addEventListener('blur', () => {
+            const inputValue = dateInput.value.trim();
+            
+            if (!orderBookingDetailsID) {
+              alert('OrderBookingDetailsID not found');
+              return;
+            }
+            
+            // If input is empty, don't update
+            if (!inputValue) {
+              // Restore original value if empty
+              if (value !== null && value !== undefined) {
+                dateInput.value = formatDate(value);
+              }
+              return;
+            }
+            
+            // Convert DD-MM-YYYY to YYYY-MM-DD
+            const convertedDate = convertDDMMYYYYToYYYYMMDD(inputValue);
+            
+            if (!convertedDate) {
+              alert('Invalid date format. Please use DD-MM-YYYY format (e.g., 25-12-2024)');
+              // Restore original value
+              if (value !== null && value !== undefined) {
+                dateInput.value = formatDate(value);
+              } else {
+                dateInput.value = '';
+              }
+              return;
+            }
+            
+            // Update the date
+            updateExpectedDeliveryDate(orderBookingDetailsID, convertedDate);
+          });
+          
+          td.appendChild(dateInput);
         } else {
           // Regular cell content
           // Format date columns to DD-MM-YYYY
@@ -588,6 +643,23 @@
             }
           } else {
             td.textContent = '';
+          }
+        }
+        
+        // Set column width for Job Name and Client Name columns to be the same
+        if (colIndex === jobNameColumnIndex || colIndex === clientNameColumnIndex) {
+          td.style.width = '150px';
+          td.style.maxWidth = '150px';
+          td.style.minWidth = '150px';
+        }
+        
+        // Add text truncation and tooltip for Job Name and Client Name columns
+        if (colIndex === jobNameColumnIndex || colIndex === clientNameColumnIndex) {
+          td.style.overflow = 'hidden';
+          td.style.textOverflow = 'ellipsis';
+          // Add title attribute for hover tooltip
+          if (value !== null && value !== undefined && value !== '') {
+            td.title = String(value);
           }
         }
         
@@ -793,6 +865,44 @@
     const year = date.getFullYear();
     
     return `${day}-${month}-${year}`;
+  }
+
+  // Convert DD-MM-YYYY format to YYYY-MM-DD format
+  function convertDDMMYYYYToYYYYMMDD(dateString) {
+    if (!dateString) return null;
+    
+    // Remove any whitespace
+    dateString = dateString.trim();
+    
+    // Check if it's in DD-MM-YYYY format
+    const ddMMyyyyPattern = /^(\d{1,2})-(\d{1,2})-(\d{4})$/;
+    const match = dateString.match(ddMMyyyyPattern);
+    
+    if (match) {
+      const day = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10);
+      const year = parseInt(match[3], 10);
+      
+      // Validate date
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+        const date = new Date(year, month - 1, day);
+        // Check if date is valid (handles invalid dates like 31-02-2024)
+        if (date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year) {
+          return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+      }
+    }
+    
+    // If not in DD-MM-YYYY format, try to parse as-is
+    const parsedDate = new Date(dateString);
+    if (!isNaN(parsedDate.getTime())) {
+      const year = parsedDate.getFullYear();
+      const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(parsedDate.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    
+    return null;
   }
 
   // Check if a column is a date column
@@ -1051,8 +1161,6 @@
         formattedDate = `${year}-${month}-${day}`;
       }
     }
-    
-    hideDatePickerModal();
     
     // Show loading state
     if (loadingOverlay) {

@@ -19,6 +19,10 @@
     <header class="app-header">
       <h1>WhatsApp Messenger</h1>
       <div class="spacer"></div>
+      <div id="header-info" class="header-info hidden">
+        <span><strong>User:</strong> <span id="header-username"></span></span>
+        <span><strong>Date Range:</strong> <span id="header-date-range"></span></span>
+      </div>
       <button id="btn-logout" class="secondary hidden" title="Logout">Logout</button>
     </header>
 
@@ -50,10 +54,6 @@
       <section id="dashboard-section" class="card hidden">
         <div class="page-header">
           <h2>Pending First Intimation Jobs</h2>
-        </div>
-        <div class="info">
-          <p><strong>Logged in as:</strong> <span id="info-username"></span></p>
-          <p><strong>Date Range:</strong> <span id="info-date-range"></span></p>
         </div>
         
         <!-- Select All Button (shown when filters are active) -->
