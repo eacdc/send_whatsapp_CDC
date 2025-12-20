@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhatsApp Messenger</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Loading Spinner -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+  </div>
+
+  <div id="app">
+    <header class="app-header">
+      <h1>WhatsApp Messenger</h1>
+      <div class="spacer"></div>
+      <button id="btn-logout" class="secondary hidden" title="Logout">Logout</button>
+    </header>
+
+    <main class="app-main">
+      <!-- Login Section -->
+      <section id="login-section" class="card">
+        <h2>Login</h2>
+        <form id="login-form">
+          <div class="form-row">
+            <label for="username">Username</label>
+            <select 
+              id="username" 
+              name="username" 
+              required
+            >
+              <option value="">Select username</option>
+              <option value="Sourav">Sourav</option>
+              <option value="Swarnali">Swarnali</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="submit">Sign in</button>
+          </div>
+          <p id="login-error" class="error" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <!-- Main Dashboard (Hidden initially) -->
+      <section id="dashboard-section" class="card hidden">
+        <div class="page-header">
+          <h2>Pending First Intimation Jobs</h2>
+        </div>
+        <div class="info">
+          <p><strong>Logged in as:</strong> <span id="info-username"></span></p>
+          <p><strong>Date Range:</strong> <span id="info-date-range"></span></p>
+        </div>
+        
+        <!-- Select All Button (shown when filters are active) -->
+        <div id="select-all-container" class="select-all-container hidden">
+          <button id="btn-select-all" class="select-all-btn">Select All</button>
+        </div>
+        
+        <!-- Pending Jobs Table -->
+        <div id="pending-jobs-container" class="table-container-wrapper">
+          <div class="table-scroll">
+            <table id="pending-jobs-table" class="data-table">
+              <thead id="pending-jobs-thead">
+                <!-- Headers will be dynamically generated -->
+              </thead>
+              <tbody id="pending-jobs-tbody">
+                <!-- Data will be dynamically generated -->
+              </tbody>
+            </table>
+          </div>
+          <div id="pending-jobs-empty" class="empty-message hidden">
+            No pending jobs found
+          </div>
+        </div>
+        
+        <!-- Send Button -->
+        <div class="send-button-container">
+          <button id="btn-send-whatsapp" class="send-btn" disabled>Send</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <small>&copy; <span id="year"></span> CDC</small>
+    </footer>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmation-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h3>Confirm Send WhatsApp Messages</h3>
+      <p id="confirmation-message">Are you sure you want to send WhatsApp messages to the selected items?</p>
+      <div class="modal-actions">
+        <button id="btn-confirm-yes" class="btn-confirm">Yes</button>
+        <button id="btn-confirm-no" class="btn-cancel">No</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date Picker Modal -->
+  <div id="date-picker-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h3>Update Final Delivery Date</h3>
+      <div class="form-row" style="margin-bottom: 1rem;">
+        <label for="date-picker-input">Select New Delivery Date</label>
+        <input 
+          type="date" 
+          id="date-picker-input" 
+          class="date-input"
+          required
+        />
+      </div>
+      <div class="modal-actions">
+        <button id="btn-date-ok" class="btn-confirm">OK</button>
+        <button id="btn-date-cancel" class="btn-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
