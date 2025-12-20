@@ -90,11 +90,57 @@ body {
   margin: 0;
 }
 
+/* Login card - smaller and centered */
+#login-section.card {
+  max-width: 1200px;
+  width: auto;
+  margin: 2rem auto;
+  padding: 3rem;
+  text-align: center;
+}
+
+#login-section.card h2 {
+  text-align: center;
+}
+
+#login-section .form-row {
+  text-align: center;
+}
+
+#login-section .form-row label {
+  text-align: center;
+  display: block;
+}
+
+#login-section .form-row input,
+#login-section .form-row select {
+  text-align: center;
+  max-width: 400px;
+  margin: 0 auto;
+  display: block;
+}
+
+#login-section .form-actions {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+}
+
+#login-section #login-error {
+  text-align: center;
+}
+
 .card h2 {
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1.5rem;
   color: var(--text);
+}
+
+/* Smaller heading for login */
+#login-section.card h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1.25rem;
 }
 
 .page-header {
@@ -167,6 +213,15 @@ body {
   margin-top: 2rem;
 }
 
+/* Tighter spacing for login form */
+#login-section .form-row {
+  margin-bottom: 1.25rem;
+}
+
+#login-section .form-actions {
+  margin-top: 1.5rem;
+}
+
 button {
   padding: 0.75rem 1.5rem;
   background: var(--primary);
@@ -210,6 +265,11 @@ button.secondary:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: 8px;
+}
+
+/* Hide error message when empty */
+.error:empty {
+  display: none;
 }
 
 .success {
