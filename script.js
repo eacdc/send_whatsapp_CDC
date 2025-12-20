@@ -627,8 +627,12 @@
               return;
             }
             
-            // Update the date
-            updateExpectedDeliveryDate(orderBookingDetailsID, convertedDate);
+            // Store reference to the input for updating after API call
+            const inputElement = dateInput;
+            const originalValue = value;
+            
+            // Update the date (pass input element and original value for local update)
+            updateExpectedDeliveryDate(orderBookingDetailsID, convertedDate, inputElement, originalValue);
           });
           
           td.appendChild(dateInput);
@@ -1138,7 +1142,7 @@
   }
   
   // Update expected delivery date
-  async function updateExpectedDeliveryDate(orderBookingDetailsID, newDate) {
+  async function updateExpectedDeliveryDate(orderBookingDetailsID, newDate, inputElement = null, originalValue = null) {
     if (!orderBookingDetailsID || !newDate) {
       alert('Invalid date or order booking details ID');
       return;
@@ -1152,13 +1156,18 @@
       const day = String(newDate.getDate()).padStart(2, '0');
       formattedDate = `${year}-${month}-${day}`;
     } else if (typeof newDate === 'string') {
-      // Ensure it's in YYYY-MM-DD format
-      const parsedDate = new Date(newDate);
-      if (!isNaN(parsedDate.getTime())) {
-        const year = parsedDate.getFullYear();
-        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-        const day = String(parsedDate.getDate()).padStart(2, '0');
-        formattedDate = `${year}-${month}-${day}`;
+      // If already in YYYY-MM-DD format, use as-is
+      if (/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+        formattedDate = newDate;
+      } else {
+        // Try to parse and format
+        const parsedDate = new Date(newDate);
+        if (!isNaN(parsedDate.getTime())) {
+          const year = parsedDate.getFullYear();
+          const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+          const day = String(parsedDate.getDate()).padStart(2, '0');
+          formattedDate = `${year}-${month}-${day}`;
+        }
       }
     }
     
@@ -1205,14 +1214,41 @@
       
       console.log('Delivery date updated successfully');
       
-      // Reload pending list
-      if (username) {
-        const { pendingJobs, dateRange } = await fetchPendingData(username);
-        showDashboard(username, pendingJobs, dateRange);
+      // Update local data instead of reloading
+      if (finalDeliveryDateColumnIndex >= 0 && columnsToShow && columnsToShow.length > 0) {
+        const finalDeliveryDateKey = columnsToShow[finalDeliveryDateColumnIndex];
+        
+        // Update pendingData
+        const pendingRow = pendingData.find(row => 
+          (row.OrderBookingDetailsID || row.orderBookingDetailsID) == orderBookingDetailsID
+        );
+        if (pendingRow && finalDeliveryDateKey) {
+          pendingRow[finalDeliveryDateKey] = formattedDate;
+        }
+        
+        // Update filteredData
+        const filteredRow = filteredData.find(row => 
+          (row.OrderBookingDetailsID || row.orderBookingDetailsID) == orderBookingDetailsID
+        );
+        if (filteredRow && finalDeliveryDateKey) {
+          filteredRow[finalDeliveryDateKey] = formattedDate;
+        }
+        
+        // Update the input field value to show the formatted date
+        if (inputElement) {
+          inputElement.value = formatDate(formattedDate);
+        }
       }
     } catch (error) {
       console.error('Error updating delivery date:', error);
       alert('Error updating delivery date: ' + error.message);
+      
+      // Restore original value on error
+      if (inputElement && originalValue !== null && originalValue !== undefined) {
+        inputElement.value = formatDate(originalValue);
+      } else if (inputElement) {
+        inputElement.value = '';
+      }
     } finally {
       // Hide loading
       if (loadingOverlay) {
