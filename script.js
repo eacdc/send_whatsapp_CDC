@@ -79,6 +79,9 @@
   let currentEditingOrderBookingDetailsID = null;
   let currentEditingDateTextElement = null;
 
+  // Store intimation type (1st or 2nd)
+  let currentIntimationType = '1st'; // '1st' or '2nd'
+
   // Store pending data and filters
   let pendingData = [];
   let filteredData = [];
@@ -89,7 +92,7 @@
   let jobNameColumnIndex = -1; // Index of Job Name column
   let clientNameColumnIndex = -1; // Index of Client Name column
 
-  // Fetch pending data from backend
+  // Fetch pending data from backend (1st intimation)
   async function fetchPendingData(username) {
     try {
       const apiBase = getApiBaseUrl();
@@ -110,7 +113,7 @@
       const pendingJobs = data.pendingData || [];
       const dateRange = data.dateRange || null;
       
-      console.log('Fetched pending data:', {
+      console.log('Fetched pending data (1st intimation):', {
         username: data.username,
         pendingDataCount: pendingJobs.length,
         dateRange: dateRange
@@ -120,6 +123,65 @@
     } catch (error) {
       console.error('Error fetching pending data:', error);
       throw error;
+    }
+  }
+
+  // Fetch pending data for 2nd intimation
+  async function fetchPendingData2ndIntimation(username) {
+    try {
+      const apiBase = getApiBaseUrl();
+      
+      // Calculate date range (last 2 weeks)
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - 14);
+      
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+      
+      const response = await fetch(`${apiBase}whatsapp/second-intimation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          username,
+          startDate: startDateStr,
+          endDate: endDateStr
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch 2nd intimation data');
+      }
+
+      const pendingJobs = data.pendingData || [];
+      const dateRange = {
+        startDate: startDateStr,
+        endDate: endDateStr
+      };
+      
+      console.log('Fetched pending data (2nd intimation):', {
+        username: data.username,
+        pendingDataCount: pendingJobs.length,
+        dateRange: dateRange
+      });
+      
+      return { pendingJobs, dateRange };
+    } catch (error) {
+      console.error('Error fetching 2nd intimation data:', error);
+      throw error;
+    }
+  }
+
+  // Fetch pending data based on current intimation type
+  async function fetchPendingDataByType(username, intimationType) {
+    if (intimationType === '2nd') {
+      return await fetchPendingData2ndIntimation(username);
+    } else {
+      return await fetchPendingData(username);
     }
   }
 
@@ -142,7 +204,7 @@
       showLoading(true);
       try {
         showDashboard(username); // Show dashboard first
-        const { pendingJobs, dateRange } = await fetchPendingData(username);
+        const { pendingJobs, dateRange } = await fetchPendingDataByType(username, currentIntimationType);
         showDashboard(username, pendingJobs, dateRange);
       } catch (error) {
         console.error('Failed to fetch pending data on reload:', error);
@@ -1273,25 +1335,53 @@
 
   // Handle intimation type button clicks
   if (btn1stIntimation) {
-    btn1stIntimation.addEventListener('click', () => {
+    btn1stIntimation.addEventListener('click', async () => {
+      if (currentIntimationType === '1st') return; // Already active
+      
       // Set 1st intimation as active
       btn1stIntimation.classList.add('active');
       if (btn2ndIntimation) btn2ndIntimation.classList.remove('active');
-      // TODO: Implement 1st intimation functionality (current functionality)
+      currentIntimationType = '1st';
+      
+      // Fetch and display 1st intimation data
+      const username = localStorage.getItem('whatsapp_username');
+      if (username) {
+        showLoading(true);
+        try {
+          const { pendingJobs, dateRange } = await fetchPendingDataByType(username, '1st');
+          showDashboard(username, pendingJobs, dateRange);
+        } catch (error) {
+          console.error('Failed to fetch 1st intimation data:', error);
+          alert('Failed to load 1st intimation data: ' + error.message);
+        } finally {
+          showLoading(false);
+        }
+      }
     });
   }
 
   if (btn2ndIntimation) {
-    btn2ndIntimation.addEventListener('click', () => {
+    btn2ndIntimation.addEventListener('click', async () => {
+      if (currentIntimationType === '2nd') return; // Already active
+      
       // Set 2nd intimation as active
       btn2ndIntimation.classList.add('active');
       if (btn1stIntimation) btn1stIntimation.classList.remove('active');
-      // TODO: Implement 2nd intimation functionality later
-      alert('2nd Intimation feature coming soon');
-      // Revert back to 1st intimation
-      if (btn1stIntimation) {
-        btn1stIntimation.classList.add('active');
-        btn2ndIntimation.classList.remove('active');
+      currentIntimationType = '2nd';
+      
+      // Fetch and display 2nd intimation data
+      const username = localStorage.getItem('whatsapp_username');
+      if (username) {
+        showLoading(true);
+        try {
+          const { pendingJobs, dateRange } = await fetchPendingDataByType(username, '2nd');
+          showDashboard(username, pendingJobs, dateRange);
+        } catch (error) {
+          console.error('Failed to fetch 2nd intimation data:', error);
+          alert('Failed to load 2nd intimation data: ' + error.message);
+        } finally {
+          showLoading(false);
+        }
       }
     });
   }
