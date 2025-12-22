@@ -373,6 +373,11 @@
         const keyLower = key.toLowerCase();
         const combined = (colName + ' ' + keyLower).toLowerCase();
         
+        // Explicitly exclude ID columns (like "Dispatch Schedule ID")
+        if (combined.includes('id') && (combined.includes('schedule') || combined.includes('dispatch'))) {
+          return false;
+        }
+        
         // Strategy 1: Exact pattern matches
         const exactPatterns = [
           'final delivery date',
@@ -413,9 +418,18 @@
       if (finalDeliveryDateColumnIndex === -1) {
         console.warn('Final Delivery Date column not found by name, trying fallback...');
         // Look for date columns and pick the last one (usually Final Delivery Date)
+        // But exclude ID columns
         const dateColumnIndices = [];
         columnsToShow.forEach((key, idx) => {
           const colName = formatColumnName(key).toLowerCase();
+          const keyLower = key.toLowerCase();
+          const combined = (colName + ' ' + keyLower).toLowerCase();
+          
+          // Skip ID columns
+          if (combined.includes('id') && (combined.includes('schedule') || combined.includes('dispatch'))) {
+            return;
+          }
+          
           if (isDateColumn(colName)) {
             dateColumnIndices.push({ index: idx, key, colName });
           }
@@ -677,9 +691,16 @@
           td.appendChild(dateInput);
         } else {
           // Regular cell content
-          // Format date columns to DD-MM-YYYY
+          // Format date columns to DD-MM-YYYY, but exclude ID columns
           if (value !== null && value !== undefined) {
-            if (isDateColumn(columnName)) {
+            const lowerColumnName = columnName.toLowerCase();
+            const lowerKey = key.toLowerCase();
+            const combined = (lowerColumnName + ' ' + lowerKey).toLowerCase();
+            
+            // Explicitly check if this is an ID column - don't format as date
+            const isIDColumn = combined.includes('id') && (combined.includes('schedule') || combined.includes('dispatch'));
+            
+            if (!isIDColumn && isDateColumn(columnName)) {
               td.textContent = formatDate(value);
             } else {
               td.textContent = String(value);
@@ -948,15 +969,30 @@
     }
     
     // Exclude any column that ends with "ID" or contains "ID" as a separate word
-    if (lowerName.endsWith(' id') || lowerName.endsWith('id') && !lowerName.includes('date')) {
+    if (lowerName.endsWith(' id') || (lowerName.endsWith('id') && !lowerName.includes('date'))) {
       // Only exclude if it doesn't also contain "date" (e.g., "Date ID" would still be excluded)
       if (!lowerName.includes('date')) {
         return false;
       }
     }
     
-    const dateKeywords = ['date', 'schedule', 'delivery', 'order date'];
-    return dateKeywords.some(keyword => lowerName.includes(keyword));
+    // Exclude "Dispatch Schedule" columns that don't have "date" in them
+    if ((lowerName.includes('dispatch') || lowerName.includes('schedule')) && !lowerName.includes('date')) {
+      // Only exclude if it contains "id" or ends with "id"
+      if (lowerName.includes('id') || lowerName.endsWith('id')) {
+        return false;
+      }
+    }
+    
+    // Date keywords - but "schedule" alone is not enough if it's an ID column
+    const dateKeywords = ['date', 'delivery', 'order date'];
+    const hasDateKeyword = dateKeywords.some(keyword => lowerName.includes(keyword));
+    
+    // "schedule" can indicate a date, but only if it's not an ID column
+    const hasSchedule = lowerName.includes('schedule');
+    const isScheduleDate = hasSchedule && !lowerName.includes('id') && (lowerName.includes('date') || lowerName.includes('delivery'));
+    
+    return hasDateKeyword || isScheduleDate;
   }
 
   // Apply filters to data (only re-renders body, not header)
