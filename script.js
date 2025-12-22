@@ -939,8 +939,23 @@
 
   // Check if a column is a date column
   function isDateColumn(columnName) {
-    const dateKeywords = ['date', 'schedule', 'delivery', 'order date'];
     const lowerName = columnName.toLowerCase();
+    
+    // Exclude columns that contain "ID" - these are identifiers, not dates
+    // Specifically exclude "Dispatch Schedule ID" and similar ID columns
+    if (lowerName.includes('id') && (lowerName.includes('schedule') || lowerName.includes('dispatch'))) {
+      return false;
+    }
+    
+    // Exclude any column that ends with "ID" or contains "ID" as a separate word
+    if (lowerName.endsWith(' id') || lowerName.endsWith('id') && !lowerName.includes('date')) {
+      // Only exclude if it doesn't also contain "date" (e.g., "Date ID" would still be excluded)
+      if (!lowerName.includes('date')) {
+        return false;
+      }
+    }
+    
+    const dateKeywords = ['date', 'schedule', 'delivery', 'order date'];
     return dateKeywords.some(keyword => lowerName.includes(keyword));
   }
 
