@@ -94,6 +94,9 @@
   let finalDeliveryDateColumnIndex = -1; // Index of Final Delivery Date column
   let jobNameColumnIndex = -1; // Index of Job Name column
   let clientNameColumnIndex = -1; // Index of Client Name column
+  let readinessDateColumnIndex = -1; // Index of Readiness Date column (for 2nd intimation)
+  let noOfCartonColumnIndex = -1; // Index of Number of Cartons column (for 2nd intimation)
+  let qtyPerCartonColumnIndex = -1; // Index of Qty Per Carton column (for 2nd intimation)
 
   // Fetch pending data from backend (1st intimation)
   async function fetchPendingData(username) {
@@ -266,6 +269,7 @@
       filteredData = [...pendingData];
       columnFilters = {};
       selectedRows.clear(); // Clear selections when new data is loaded
+      editedValues.clear(); // Clear edited values when new data is loaded
       renderPendingJobsTable();
       updateSendButton();
     } else {
@@ -348,6 +352,10 @@
 
   // Store column keys for reuse
   let columnsToShow = [];
+  
+  // Track edited values for each row (for 2nd intimation)
+  // Format: { rowId: { readyForDispatchDate: value, noOfCarton: value, qtyPerCarton: value } }
+  let editedValues = new Map();
 
   // Render table header (only once, with search inputs)
   // Headers should always be visible, even when no data or filtered results
@@ -692,77 +700,181 @@
           });
           
           td.appendChild(dateInput);
-        } else if (colIndex === 14 || colIndex === 15) {
-          // 15th and 16th columns (0-indexed: 14 and 15) - editable whole numbers only
-          const numberInput = document.createElement('input');
-          numberInput.type = 'text';
-          numberInput.className = 'editable-number-input';
-          numberInput.inputMode = 'numeric';
-          numberInput.pattern = '[0-9]*';
+        } else if ((currentIntimationType === '2nd' && (colIndex === readinessDateColumnIndex || colIndex === noOfCartonColumnIndex || colIndex === qtyPerCartonColumnIndex)) || (currentIntimationType === '1st' && (colIndex === 14 || colIndex === 15))) {
+          // For 2nd intimation: Readiness Date, Number of Cartons, Qty Per Carton (last 3 columns)
+          // For 1st intimation: 15th and 16th columns (0-indexed: 14 and 15) - editable whole numbers only
           
-          // Set initial value
-          if (value !== null && value !== undefined) {
-            // Convert to integer and display
-            const numValue = parseInt(value, 10);
-            numberInput.value = isNaN(numValue) ? '' : numValue.toString();
-            } else {
-            numberInput.value = '';
-          }
+          const isDateColumn = currentIntimationType === '2nd' && colIndex === readinessDateColumnIndex;
           
-          // Store original value and column key for later use
-          const originalValue = value;
-          const columnKey = key;
+          let inputElement;
           
-          // Handle input to allow only whole numbers
-          numberInput.addEventListener('input', (e) => {
-            // Remove any non-digit characters
-            e.target.value = e.target.value.replace(/[^0-9]/g, '');
-          });
-          
-          // Handle Enter key press
-          numberInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              numberInput.blur(); // Trigger blur event which will handle the update
-            }
-          });
-          
-          // Handle blur (when user clicks outside)
-          numberInput.addEventListener('blur', () => {
-            const inputValue = numberInput.value.trim();
+          if (isDateColumn) {
+            // Readiness Date - editable date input
+            const dateInput = document.createElement('input');
+            dateInput.type = 'text';
+            dateInput.className = 'editable-date-input';
+            dateInput.placeholder = 'DD-MM-YYYY';
             
-            // If input is empty, restore original value or set to empty
-            if (!inputValue) {
-              if (originalValue !== null && originalValue !== undefined) {
-                const numValue = parseInt(originalValue, 10);
-                numberInput.value = isNaN(numValue) ? '' : numValue.toString();
-              } else {
-                numberInput.value = '';
+            // Set initial value in DD-MM-YYYY format
+            if (value !== null && value !== undefined) {
+              dateInput.value = formatDate(value);
+            } else {
+              dateInput.value = '';
+            }
+            
+            // Store original value and column key
+            const originalValue = value;
+            const columnKey = key;
+            
+            // Handle Enter key press
+            dateInput.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                dateInput.blur();
               }
-            // Update local data (set to null/empty)
-            updateLocalColumnValue(row, columnKey, null);
-            return;
-          }
-          
-          // Validate that it's a whole number
-          const numValue = parseInt(inputValue, 10);
-          if (isNaN(numValue) || numValue < 0 || !Number.isInteger(numValue)) {
-            alert('Please enter a valid whole number (0 or positive integer)');
-            // Restore original value
-            if (originalValue !== null && originalValue !== undefined) {
-              const numValue = parseInt(originalValue, 10);
+            });
+            
+            // Handle blur
+            dateInput.addEventListener('blur', () => {
+              const inputValue = dateInput.value.trim();
+              
+              if (!inputValue) {
+                // Empty - restore original or clear
+                if (originalValue !== null && originalValue !== undefined) {
+                  dateInput.value = formatDate(originalValue);
+                } else {
+                  dateInput.value = '';
+                }
+                // Mark as not edited (remove from editedValues)
+                const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+                if (rowId && editedValues.has(rowId)) {
+                  editedValues.get(rowId).readyForDispatchDate = undefined;
+                }
+                updateLocalColumnValue(row, columnKey, null);
+                return;
+              }
+              
+              // Convert DD-MM-YYYY to YYYY-MM-DD
+              const convertedDate = convertDDMMYYYYToYYYYMMDD(inputValue);
+              
+              if (!convertedDate) {
+                alert('Invalid date format. Please use DD-MM-YYYY format (e.g., 25-12-2024)');
+                if (originalValue !== null && originalValue !== undefined) {
+                  dateInput.value = formatDate(originalValue);
+                } else {
+                  dateInput.value = '';
+                }
+                return;
+              }
+              
+              // Track that this value was edited
+              const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+              if (rowId) {
+                if (!editedValues.has(rowId)) {
+                  editedValues.set(rowId, {});
+                }
+                editedValues.get(rowId).readyForDispatchDate = convertedDate;
+              }
+              
+              // Update local data
+              updateLocalColumnValue(row, columnKey, convertedDate);
+            });
+            
+            inputElement = dateInput;
+          } else {
+            // Number input (Number of Cartons or Qty Per Carton)
+            const numberInput = document.createElement('input');
+            numberInput.type = 'text';
+            numberInput.className = 'editable-number-input';
+            numberInput.inputMode = 'numeric';
+            numberInput.pattern = '[0-9]*';
+            
+            // Set initial value
+            if (value !== null && value !== undefined) {
+              const numValue = parseInt(value, 10);
               numberInput.value = isNaN(numValue) ? '' : numValue.toString();
             } else {
               numberInput.value = '';
             }
-            return;
+            
+            // Store original value and column key
+            const originalValue = value;
+            const columnKey = key;
+            const isNoOfCarton = currentIntimationType === '2nd' && colIndex === noOfCartonColumnIndex;
+            const isQtyPerCarton = currentIntimationType === '2nd' && colIndex === qtyPerCartonColumnIndex;
+            
+            // Handle input to allow only whole numbers
+            numberInput.addEventListener('input', (e) => {
+              e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            });
+            
+            // Handle Enter key press
+            numberInput.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                numberInput.blur();
+              }
+            });
+            
+            // Handle blur
+            numberInput.addEventListener('blur', () => {
+              const inputValue = numberInput.value.trim();
+              
+              if (!inputValue) {
+                // Empty - restore original or clear
+                if (originalValue !== null && originalValue !== undefined) {
+                  const numValue = parseInt(originalValue, 10);
+                  numberInput.value = isNaN(numValue) ? '' : numValue.toString();
+                } else {
+                  numberInput.value = '';
+                }
+                // Mark as not edited
+                const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+                if (rowId && editedValues.has(rowId)) {
+                  if (isNoOfCarton) {
+                    editedValues.get(rowId).noOfCarton = undefined;
+                  } else if (isQtyPerCarton) {
+                    editedValues.get(rowId).qtyPerCarton = undefined;
+                  }
+                }
+                updateLocalColumnValue(row, columnKey, null);
+                return;
+              }
+              
+              // Validate whole number
+              const numValue = parseInt(inputValue, 10);
+              if (isNaN(numValue) || numValue < 0 || !Number.isInteger(numValue)) {
+                alert('Please enter a valid whole number (0 or positive integer)');
+                if (originalValue !== null && originalValue !== undefined) {
+                  const numValue = parseInt(originalValue, 10);
+                  numberInput.value = isNaN(numValue) ? '' : numValue.toString();
+                } else {
+                  numberInput.value = '';
+                }
+                return;
+              }
+              
+              // Track that this value was edited
+              const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+              if (rowId) {
+                if (!editedValues.has(rowId)) {
+                  editedValues.set(rowId, {});
+                }
+                if (isNoOfCarton) {
+                  editedValues.get(rowId).noOfCarton = numValue;
+                } else if (isQtyPerCarton) {
+                  editedValues.get(rowId).qtyPerCarton = numValue;
+                }
+              }
+              
+              // Update local data
+              updateLocalColumnValue(row, columnKey, numValue);
+            });
+            
+            inputElement = numberInput;
           }
           
-          // Update local data
-          updateLocalColumnValue(row, columnKey, numValue);
-          });
-          
-          td.appendChild(numberInput);
+          td.appendChild(inputElement);
         } else {
           // Regular cell content
           // Format date columns to DD-MM-YYYY, but exclude ID columns
@@ -1167,67 +1279,49 @@
       
       // Handle 2nd intimation differently
       if (currentIntimationType === '2nd') {
-        // Get selected rows with their data
+        // Get selected rows with their data (only send edited values)
         const selectedRowsData = [];
         filteredData.forEach((row, idx) => {
           const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
           if (selectedRows.has(rowId)) {
             const orderBookingDetailsId = row.OrderBookingDetailsID || row.orderBookingDetailsID;
             
-            // Get column keys for last 3 columns
-            const colsLength = columnsToShow.length;
-            const readyForDispatchDateKey = colsLength >= 3 ? columnsToShow[colsLength - 3] : null; // 3rd last
-            const noOfCartonKey = colsLength >= 2 ? columnsToShow[colsLength - 2] : null; // 2nd last
-            const qtyPerCartonKey = colsLength >= 1 ? columnsToShow[colsLength - 1] : null; // last
-            
-            // Get values from the row
-            let readyForDispatchDate = readyForDispatchDateKey ? row[readyForDispatchDateKey] : null;
-            let noOfCarton = noOfCartonKey ? row[noOfCartonKey] : null;
-            let qtyPerCarton = qtyPerCartonKey ? row[qtyPerCartonKey] : null;
-            
-            // Convert date to YYYY-MM-DD format if needed
-            if (readyForDispatchDate) {
-              // If it's already a date string in YYYY-MM-DD format, use it
-              if (typeof readyForDispatchDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(readyForDispatchDate)) {
-                readyForDispatchDate = readyForDispatchDate.split('T')[0]; // Remove time if present
-              } else if (readyForDispatchDate instanceof Date) {
-                const year = readyForDispatchDate.getFullYear();
-                const month = String(readyForDispatchDate.getMonth() + 1).padStart(2, '0');
-                const day = String(readyForDispatchDate.getDate()).padStart(2, '0');
-                readyForDispatchDate = `${year}-${month}-${day}`;
-              } else {
-                // Try to parse as date
-                try {
-                  const parsedDate = new Date(readyForDispatchDate);
-                  if (!isNaN(parsedDate.getTime())) {
-                    const year = parsedDate.getFullYear();
-                    const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-                    const day = String(parsedDate.getDate()).padStart(2, '0');
-                    readyForDispatchDate = `${year}-${month}-${day}`;
-                  }
-                } catch (e) {
-                  console.warn('Could not parse date:', readyForDispatchDate);
-                }
-              }
+            if (!orderBookingDetailsId) {
+              return;
             }
             
-            // Convert numbers to integers
-            noOfCarton = noOfCarton != null ? parseInt(noOfCarton, 10) : null;
-            qtyPerCarton = qtyPerCarton != null ? parseInt(qtyPerCarton, 10) : null;
+            // Check if this row has any edited values
+            const editedData = editedValues.get(rowId);
+            if (!editedData || Object.keys(editedData).length === 0) {
+              console.warn(`Row ${rowId} has no edited values, skipping`);
+              return;
+            }
             
-            if (orderBookingDetailsId) {
-              selectedRowsData.push({
-                orderBookingDetailsId: [Number(orderBookingDetailsId)],
-                readyForDispatchDate: readyForDispatchDate || null,
-                noOfCarton: noOfCarton || null,
-                qtyPerCarton: qtyPerCarton || null
-              });
+            // Build the item object with only edited values
+            const item = {
+              orderBookingDetailsId: [Number(orderBookingDetailsId)]
+            };
+            
+            // Only include edited values
+            if (editedData.readyForDispatchDate !== undefined) {
+              item.readyForDispatchDate = editedData.readyForDispatchDate;
+            }
+            if (editedData.noOfCarton !== undefined) {
+              item.noOfCarton = editedData.noOfCarton;
+            }
+            if (editedData.qtyPerCarton !== undefined) {
+              item.qtyPerCarton = editedData.qtyPerCarton;
+            }
+            
+            // Only add if at least one field was edited (orderBookingDetailsId is always included)
+            if (Object.keys(item).length > 1) {
+              selectedRowsData.push(item);
             }
           }
         });
         
         if (selectedRowsData.length === 0) {
-          alert('No valid rows selected');
+          alert('No rows with edited values selected. Please edit at least one field (Readiness Date, Number of Cartons, or Qty Per Carton) before sending.');
           if (loadingOverlay) {
             loadingOverlay.classList.add('hidden');
           }
@@ -1271,8 +1365,9 @@
         const { pendingJobs, dateRange } = await fetchPendingData2ndIntimation(username);
         showDashboard(username, pendingJobs, dateRange);
         
-        // Clear selected rows after successful send
+        // Clear selected rows and edited values after successful send
         selectedRows.clear();
+        editedValues.clear();
         updateSelectAllButton();
         updateSendButton();
         
