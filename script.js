@@ -692,6 +692,77 @@
           });
           
           td.appendChild(dateInput);
+        } else if (colIndex === 14 || colIndex === 15) {
+          // 15th and 16th columns (0-indexed: 14 and 15) - editable whole numbers only
+          const numberInput = document.createElement('input');
+          numberInput.type = 'text';
+          numberInput.className = 'editable-number-input';
+          numberInput.inputMode = 'numeric';
+          numberInput.pattern = '[0-9]*';
+          
+          // Set initial value
+          if (value !== null && value !== undefined) {
+            // Convert to integer and display
+            const numValue = parseInt(value, 10);
+            numberInput.value = isNaN(numValue) ? '' : numValue.toString();
+          } else {
+            numberInput.value = '';
+          }
+          
+          // Store original value and column key for later use
+          const originalValue = value;
+          const columnKey = key;
+          
+          // Handle input to allow only whole numbers
+          numberInput.addEventListener('input', (e) => {
+            // Remove any non-digit characters
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+          });
+          
+          // Handle Enter key press
+          numberInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              numberInput.blur(); // Trigger blur event which will handle the update
+            }
+          });
+          
+          // Handle blur (when user clicks outside)
+          numberInput.addEventListener('blur', () => {
+            const inputValue = numberInput.value.trim();
+            
+            // If input is empty, restore original value or set to empty
+            if (!inputValue) {
+              if (originalValue !== null && originalValue !== undefined) {
+                const numValue = parseInt(originalValue, 10);
+                numberInput.value = isNaN(numValue) ? '' : numValue.toString();
+              } else {
+                numberInput.value = '';
+              }
+            // Update local data (set to null/empty)
+            updateLocalColumnValue(row, columnKey, null);
+            return;
+          }
+          
+          // Validate that it's a whole number
+          const numValue = parseInt(inputValue, 10);
+          if (isNaN(numValue) || numValue < 0 || !Number.isInteger(numValue)) {
+            alert('Please enter a valid whole number (0 or positive integer)');
+            // Restore original value
+            if (originalValue !== null && originalValue !== undefined) {
+              const numValue = parseInt(originalValue, 10);
+              numberInput.value = isNaN(numValue) ? '' : numValue.toString();
+            } else {
+              numberInput.value = '';
+            }
+            return;
+          }
+          
+          // Update local data
+          updateLocalColumnValue(row, columnKey, numValue);
+          });
+          
+          td.appendChild(numberInput);
         } else {
           // Regular cell content
           // Format date columns to DD-MM-YYYY, but exclude ID columns
@@ -1417,6 +1488,46 @@
         loadingOverlay.classList.add('hidden');
       }
     }
+  }
+  
+  // Update local column value (for number columns)
+  function updateLocalColumnValue(row, columnKey, newValue) {
+    if (!row || !columnKey) {
+      console.warn('Invalid row or column key for local update');
+      return;
+    }
+    
+    // Get the row identifier
+    const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+    if (!rowId) {
+      console.warn('Row ID not found for local update');
+      return;
+    }
+    
+    console.log('Updating local column value:', {
+      rowId,
+      columnKey,
+      newValue
+    });
+    
+    // Update pendingData
+    const pendingRow = pendingData.find(r => 
+      (r.OrderBookingDetailsID || r.orderBookingDetailsID) == rowId
+    );
+    if (pendingRow && columnKey) {
+      pendingRow[columnKey] = newValue;
+    }
+    
+    // Update filteredData
+    const filteredRow = filteredData.find(r => 
+      (r.OrderBookingDetailsID || r.orderBookingDetailsID) == rowId
+    );
+    if (filteredRow && columnKey) {
+      filteredRow[columnKey] = newValue;
+    }
+    
+    // Update the row object itself
+    row[columnKey] = newValue;
   }
   
   // Date picker OK button handler
