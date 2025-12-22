@@ -64,6 +64,8 @@
   const selectAllContainer = document.getElementById('select-all-container');
   const btnSelectAll = document.getElementById('btn-select-all');
   const btnSendWhatsApp = document.getElementById('btn-send-whatsapp');
+  const btn1stIntimation = document.getElementById('btn-1st-intimation');
+  const btn2ndIntimation = document.getElementById('btn-2nd-intimation');
   const confirmationModal = document.getElementById('confirmation-modal');
   const btnConfirmYes = document.getElementById('btn-confirm-yes');
   const btnConfirmNo = document.getElementById('btn-confirm-no');
@@ -218,7 +220,7 @@
           : 'No pending jobs data available';
       }
       if (btnSendWhatsApp) btnSendWhatsApp.disabled = true;
-      updateDeselectAllButton();
+      updateSelectAllButton();
     }
   }
 
@@ -470,36 +472,8 @@
         const selectLabel = document.createElement('div');
         selectLabel.className = 'column-header-label';
         selectLabel.textContent = 'Select';
-        selectLabel.style.marginBottom = '0.3rem';
-        
-        const deselectAllBtn = document.createElement('button');
-        deselectAllBtn.id = 'btn-deselect-all';
-        deselectAllBtn.className = 'deselect-all-btn hidden';
-        deselectAllBtn.textContent = 'Deselect All';
-        deselectAllBtn.type = 'button';
-        deselectAllBtn.addEventListener('click', () => {
-          // Deselect all rows
-          selectedRows.clear();
-          
-          // Update all checkboxes
-          const checkboxes = pendingJobsTbody.querySelectorAll('input[type="checkbox"]');
-          const rows = pendingJobsTbody.querySelectorAll('tr');
-          
-          checkboxes.forEach((checkbox, idx) => {
-            checkbox.checked = false;
-            const row = rows[idx];
-            if (row) {
-              row.classList.remove('row-selected');
-            }
-          });
-          
-          updateSelectAllButton();
-          updateSendButton();
-          updateDeselectAllButton();
-        });
         
         selectHeaderDiv.appendChild(selectLabel);
-        selectHeaderDiv.appendChild(deselectAllBtn);
         selectTh.appendChild(selectHeaderDiv);
         headerRow.appendChild(selectTh);
       }
@@ -689,7 +663,6 @@
             }
             updateSelectAllButton();
             updateSendButton();
-            updateDeselectAllButton();
           });
           
           selectTd.appendChild(checkbox);
@@ -717,83 +690,73 @@
     });
   }
   
-  // Update Deselect All button visibility
-  function updateDeselectAllButton() {
-    const btnDeselectAll = document.getElementById('btn-deselect-all');
-    if (!btnDeselectAll) return;
-    
-    // Show button when more than one row is selected
-    if (selectedRows.size > 1) {
-      btnDeselectAll.classList.remove('hidden');
-    } else {
-      btnDeselectAll.classList.add('hidden');
-    }
-  }
-  
-  // Update Select All button visibility and state
+  // Update Select All/Deselect All button visibility and state
   function updateSelectAllButton() {
     if (!selectAllContainer || !btnSelectAll) return;
     
-    // Show button if there are active filters or if filteredData has items
-    const hasFilters = Object.values(columnFilters).some(v => v && v.trim() !== '');
     const hasFilteredData = filteredData.length > 0;
     
-    if (hasFilters && hasFilteredData) {
+    // Show button when there are items to select/deselect
+    if (hasFilteredData) {
       selectAllContainer.classList.remove('hidden');
       
-      // Update button text based on selection state
-      const allSelected = filteredData.every((row, idx) => {
-        const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
-        return selectedRows.has(rowId);
-      });
-      
-      btnSelectAll.textContent = allSelected ? 'Deselect All' : 'Select All';
+      // Show "Deselect All" when more than 1 row is selected, otherwise "Select All"
+      if (selectedRows.size > 1) {
+        btnSelectAll.textContent = 'Deselect All';
+      } else {
+        btnSelectAll.textContent = 'Select All';
+      }
     } else {
       selectAllContainer.classList.add('hidden');
     }
     
-    // Also update send button and deselect all button
+    // Also update send button
     updateSendButton();
-    updateDeselectAllButton();
   }
   
-  // Select All button handler
+  // Select All / Deselect All button handler
   if (btnSelectAll) {
     btnSelectAll.addEventListener('click', () => {
-      const allSelected = filteredData.every((row, idx) => {
-        const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
-        return selectedRows.has(rowId);
-      });
+      // Check button text to determine action
+      const isDeselectMode = btnSelectAll.textContent === 'Deselect All';
       
-      // Toggle all filtered rows
-      filteredData.forEach((row, idx) => {
-        const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
-        if (allSelected) {
-          selectedRows.delete(rowId);
-        } else {
+      if (isDeselectMode) {
+        // Deselect all selected rows
+        selectedRows.clear();
+        
+        // Update all checkboxes and row styles
+        const checkboxes = pendingJobsTbody.querySelectorAll('input[type="checkbox"]');
+        const rows = pendingJobsTbody.querySelectorAll('tr');
+        
+        checkboxes.forEach((checkbox) => {
+          checkbox.checked = false;
+        });
+        
+        rows.forEach((row) => {
+          row.classList.remove('row-selected');
+        });
+      } else {
+        // Select all filtered rows
+        filteredData.forEach((row, idx) => {
+          const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
           selectedRows.add(rowId);
-        }
-      });
-      
-      // Update checkboxes and row styles in DOM
-      const checkboxes = pendingJobsTbody.querySelectorAll('input[type="checkbox"]');
-      const rows = pendingJobsTbody.querySelectorAll('tr');
-      
-      checkboxes.forEach((checkbox, idx) => {
-        checkbox.checked = !allSelected;
-        const row = rows[idx];
-        if (row) {
-          if (!allSelected) {
-            row.classList.add('row-selected');
-          } else {
-            row.classList.remove('row-selected');
-          }
-        }
-      });
+        });
+        
+        // Update checkboxes and row styles in DOM
+        const checkboxes = pendingJobsTbody.querySelectorAll('input[type="checkbox"]');
+        const rows = pendingJobsTbody.querySelectorAll('tr');
+        
+        checkboxes.forEach((checkbox) => {
+          checkbox.checked = true;
+        });
+        
+        rows.forEach((row) => {
+          row.classList.add('row-selected');
+        });
+      }
       
       updateSelectAllButton();
       updateSendButton();
-      updateDeselectAllButton();
     });
   }
   
@@ -829,9 +792,9 @@
     // Render body
     renderTableBody();
     
-    // Update send button and deselect all button after rendering
+    // Update send button and select all button after rendering
     updateSendButton();
-    updateDeselectAllButton();
+    updateSelectAllButton();
   }
 
   // Format column name for display
@@ -935,7 +898,7 @@
     // Only re-render the body, not the entire table (preserves focus on search inputs)
     renderTableBody();
     updateSendButton();
-    updateDeselectAllButton();
+    updateSelectAllButton();
   }
   
   // Get selected OrderBookingDetailsIDs
@@ -1307,6 +1270,31 @@
     showLogin();
     loginForm.reset();
   });
+
+  // Handle intimation type button clicks
+  if (btn1stIntimation) {
+    btn1stIntimation.addEventListener('click', () => {
+      // Set 1st intimation as active
+      btn1stIntimation.classList.add('active');
+      if (btn2ndIntimation) btn2ndIntimation.classList.remove('active');
+      // TODO: Implement 1st intimation functionality (current functionality)
+    });
+  }
+
+  if (btn2ndIntimation) {
+    btn2ndIntimation.addEventListener('click', () => {
+      // Set 2nd intimation as active
+      btn2ndIntimation.classList.add('active');
+      if (btn1stIntimation) btn1stIntimation.classList.remove('active');
+      // TODO: Implement 2nd intimation functionality later
+      alert('2nd Intimation feature coming soon');
+      // Revert back to 1st intimation
+      if (btn1stIntimation) {
+        btn1stIntimation.classList.add('active');
+        btn2ndIntimation.classList.remove('active');
+      }
+    });
+  }
 
   // Initialize - show loading initially
   showLoading(true);
