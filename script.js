@@ -67,6 +67,9 @@
   const btn1stIntimation = document.getElementById('btn-1st-intimation');
   const btn2ndIntimation = document.getElementById('btn-2nd-intimation');
   const confirmationModal = document.getElementById('confirmation-modal');
+  const successMessageContainer = document.getElementById('success-message-container');
+  const successMessageContent = document.getElementById('success-message-content');
+  const btnCloseSuccess = document.getElementById('btn-close-success');
   const btnConfirmYes = document.getElementById('btn-confirm-yes');
   const btnConfirmNo = document.getElementById('btn-confirm-no');
   const confirmationMessage = document.getElementById('confirmation-message');
@@ -1064,8 +1067,16 @@
         throw new Error(data.message || data.error || 'Failed to send messages');
       }
       
-      // Success - reload the page to fetch latest pending list
-      window.location.reload();
+      // Success - show success message with details (only for 1st intimation)
+      if (currentIntimationType === '1st' && data.results && Array.isArray(data.results)) {
+        showSuccessMessage(data.results);
+        // Refresh data after showing success message
+        const { pendingJobs, dateRange } = await fetchPendingDataByType(username, currentIntimationType);
+        showDashboard(username, pendingJobs, dateRange);
+      } else {
+        // For 2nd intimation or if no results, just reload
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Error sending WhatsApp messages:', error);
       alert('Error sending messages: ' + error.message);
@@ -1079,6 +1090,76 @@
         loadingOverlay.classList.add('hidden');
       }
     }
+  }
+
+  // Show success message with details
+  function showSuccessMessage(results) {
+    if (!successMessageContainer || !successMessageContent) return;
+    
+    // Clear previous content
+    successMessageContent.innerHTML = '';
+    
+    // Create table
+    const table = document.createElement('table');
+    table.className = 'success-message-table';
+    
+    // Create header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const headers = ['Job Card No', 'Order Qty', 'Client Name', 'Job Name', 'Final Delivery Date', 'Contact Person', 'Mail Sent', 'WhatsApp Sent'];
+    headers.forEach(headerText => {
+      const th = document.createElement('th');
+      th.textContent = headerText;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Create body
+    const tbody = document.createElement('tbody');
+    results.forEach(result => {
+      const row = document.createElement('tr');
+      
+      const cells = [
+        result.jobCardNo || '',
+        result.orderQty || '',
+        result.clientName || '',
+        result.jobName || '',
+        result.finalDeliveryDate ? formatDate(result.finalDeliveryDate) : '',
+        result.contactPerson || '',
+        result.mailSent || 'No',
+        result.whatsappSent || 'No'
+      ];
+      
+      cells.forEach(cellText => {
+        const td = document.createElement('td');
+        td.textContent = cellText;
+        row.appendChild(td);
+      });
+      
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    
+    successMessageContent.appendChild(table);
+    successMessageContainer.classList.remove('hidden');
+    
+    // Scroll to success message
+    successMessageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Hide success message
+  function hideSuccessMessage() {
+    if (successMessageContainer) {
+      successMessageContainer.classList.add('hidden');
+    }
+  }
+
+  // Close success message button handler
+  if (btnCloseSuccess) {
+    btnCloseSuccess.addEventListener('click', () => {
+      hideSuccessMessage();
+    });
   }
   
   // Send button click handler
