@@ -358,7 +358,33 @@
     if (pendingData && pendingData.length > 0) {
       // Get all column keys from the first row, excluding last column
       const allKeys = Object.keys(pendingData[0]);
-      columnsToShow = allKeys.slice(0, -1); // Exclude last column
+
+      // Start with all columns except the very last one
+      let visibleKeys = allKeys.slice(0, -1); // Exclude last column
+
+      // Exclude internal ID columns that should not be shown in the UI
+      // e.g. "Dispatch Schedule I D", "Order Booking Details I D", etc.
+      const isHiddenIdColumn = (key) => {
+        const label = formatColumnName(key).toLowerCase();
+
+        const isDispatchScheduleId =
+          label.includes('dispatch') && label.includes('schedule') && label.includes('id');
+        const isOrderBookingDetailsId =
+          label.includes('order') && label.includes('booking') && label.includes('details') && label.includes('id');
+        const isOrderBookingId =
+          label.includes('order') && label.includes('booking') && !label.includes('details') && label.includes('id');
+        const isJobBookingId =
+          label.includes('job') && label.includes('booking') && label.includes('id');
+
+        return (
+          isDispatchScheduleId ||
+          isOrderBookingDetailsId ||
+          isOrderBookingId ||
+          isJobBookingId
+        );
+      };
+
+      columnsToShow = visibleKeys.filter(key => !isHiddenIdColumn(key));
       
       // Find the index of Concern Mobile No column
       mobileColumnIndex = columnsToShow.findIndex(key => {
