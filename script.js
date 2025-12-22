@@ -543,23 +543,23 @@
       
       headerRow.appendChild(th);
     });
-    
+      
     // Add Select checkbox column header as the LAST column
-    const selectTh = document.createElement('th');
-    selectTh.className = 'select-column-header';
+        const selectTh = document.createElement('th');
+        selectTh.className = 'select-column-header';
     selectTh.style.width = '90px';
-    selectTh.style.textAlign = 'center';
-    
-    const selectHeaderDiv = document.createElement('div');
-    selectHeaderDiv.className = 'select-column-header-content';
-    
-    const selectLabel = document.createElement('div');
-    selectLabel.className = 'column-header-label';
-    selectLabel.textContent = 'Select';
-    
-    selectHeaderDiv.appendChild(selectLabel);
-    selectTh.appendChild(selectHeaderDiv);
-    headerRow.appendChild(selectTh);
+        selectTh.style.textAlign = 'center';
+        
+        const selectHeaderDiv = document.createElement('div');
+        selectHeaderDiv.className = 'select-column-header-content';
+        
+        const selectLabel = document.createElement('div');
+        selectLabel.className = 'column-header-label';
+        selectLabel.textContent = 'Select';
+        
+        selectHeaderDiv.appendChild(selectLabel);
+        selectTh.appendChild(selectHeaderDiv);
+        headerRow.appendChild(selectTh);
     pendingJobsThead.appendChild(headerRow);
   }
 
@@ -705,7 +705,7 @@
             // Convert to integer and display
             const numValue = parseInt(value, 10);
             numberInput.value = isNaN(numValue) ? '' : numValue.toString();
-          } else {
+            } else {
             numberInput.value = '';
           }
           
@@ -803,30 +803,30 @@
         
         tr.appendChild(td);
       });
-      
+        
       // Add Select checkbox column as the LAST column
-      const selectTd = document.createElement('td');
-      selectTd.className = 'select-column-cell';
-      selectTd.style.textAlign = 'center';
-      
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.dataset.rowId = rowId;
-      checkbox.checked = selectedRows.has(rowId);
-      checkbox.addEventListener('change', (e) => {
-        if (e.target.checked) {
-          selectedRows.add(rowId);
-          tr.classList.add('row-selected');
-        } else {
-          selectedRows.delete(rowId);
-          tr.classList.remove('row-selected');
-        }
-        updateSelectAllButton();
-        updateSendButton();
-      });
-      
-      selectTd.appendChild(checkbox);
-      tr.appendChild(selectTd);
+          const selectTd = document.createElement('td');
+          selectTd.className = 'select-column-cell';
+          selectTd.style.textAlign = 'center';
+          
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.dataset.rowId = rowId;
+          checkbox.checked = selectedRows.has(rowId);
+          checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              selectedRows.add(rowId);
+              tr.classList.add('row-selected');
+            } else {
+              selectedRows.delete(rowId);
+              tr.classList.remove('row-selected');
+            }
+            updateSelectAllButton();
+            updateSendButton();
+          });
+          
+          selectTd.appendChild(checkbox);
+          tr.appendChild(selectTd);
       pendingJobsTbody.appendChild(tr);
     });
     
@@ -895,22 +895,22 @@
         });
       } else {
         // Select all filtered rows
-        filteredData.forEach((row, idx) => {
-          const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
+      filteredData.forEach((row, idx) => {
+        const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
           selectedRows.add(rowId);
-        });
-        
-        // Update checkboxes and row styles in DOM
-        const checkboxes = pendingJobsTbody.querySelectorAll('input[type="checkbox"]');
-        const rows = pendingJobsTbody.querySelectorAll('tr');
-        
+      });
+      
+      // Update checkboxes and row styles in DOM
+      const checkboxes = pendingJobsTbody.querySelectorAll('input[type="checkbox"]');
+      const rows = pendingJobsTbody.querySelectorAll('tr');
+      
         checkboxes.forEach((checkbox) => {
           checkbox.checked = true;
         });
         
         rows.forEach((row) => {
-          row.classList.add('row-selected');
-        });
+            row.classList.add('row-selected');
+      });
       }
       
       updateSelectAllButton();
@@ -1157,13 +1157,129 @@
     if (loadingOverlay) {
       const loadingText = loadingOverlay.querySelector('.loading-spinner p');
       if (loadingText) {
-        loadingText.textContent = 'Sending messages...';
+        loadingText.textContent = currentIntimationType === '2nd' ? 'Sending material readiness data...' : 'Sending messages...';
       }
       loadingOverlay.classList.remove('hidden');
     }
     
     try {
       const apiBase = getApiBaseUrl();
+      
+      // Handle 2nd intimation differently
+      if (currentIntimationType === '2nd') {
+        // Get selected rows with their data
+        const selectedRowsData = [];
+        filteredData.forEach((row, idx) => {
+          const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
+          if (selectedRows.has(rowId)) {
+            const orderBookingDetailsId = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+            
+            // Get column keys for last 3 columns
+            const colsLength = columnsToShow.length;
+            const readyForDispatchDateKey = colsLength >= 3 ? columnsToShow[colsLength - 3] : null; // 3rd last
+            const noOfCartonKey = colsLength >= 2 ? columnsToShow[colsLength - 2] : null; // 2nd last
+            const qtyPerCartonKey = colsLength >= 1 ? columnsToShow[colsLength - 1] : null; // last
+            
+            // Get values from the row
+            let readyForDispatchDate = readyForDispatchDateKey ? row[readyForDispatchDateKey] : null;
+            let noOfCarton = noOfCartonKey ? row[noOfCartonKey] : null;
+            let qtyPerCarton = qtyPerCartonKey ? row[qtyPerCartonKey] : null;
+            
+            // Convert date to YYYY-MM-DD format if needed
+            if (readyForDispatchDate) {
+              // If it's already a date string in YYYY-MM-DD format, use it
+              if (typeof readyForDispatchDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(readyForDispatchDate)) {
+                readyForDispatchDate = readyForDispatchDate.split('T')[0]; // Remove time if present
+              } else if (readyForDispatchDate instanceof Date) {
+                const year = readyForDispatchDate.getFullYear();
+                const month = String(readyForDispatchDate.getMonth() + 1).padStart(2, '0');
+                const day = String(readyForDispatchDate.getDate()).padStart(2, '0');
+                readyForDispatchDate = `${year}-${month}-${day}`;
+              } else {
+                // Try to parse as date
+                try {
+                  const parsedDate = new Date(readyForDispatchDate);
+                  if (!isNaN(parsedDate.getTime())) {
+                    const year = parsedDate.getFullYear();
+                    const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(parsedDate.getDate()).padStart(2, '0');
+                    readyForDispatchDate = `${year}-${month}-${day}`;
+                  }
+                } catch (e) {
+                  console.warn('Could not parse date:', readyForDispatchDate);
+                }
+              }
+            }
+            
+            // Convert numbers to integers
+            noOfCarton = noOfCarton != null ? parseInt(noOfCarton, 10) : null;
+            qtyPerCarton = qtyPerCarton != null ? parseInt(qtyPerCarton, 10) : null;
+            
+            if (orderBookingDetailsId) {
+              selectedRowsData.push({
+                orderBookingDetailsId: [Number(orderBookingDetailsId)],
+                readyForDispatchDate: readyForDispatchDate || null,
+                noOfCarton: noOfCarton || null,
+                qtyPerCarton: qtyPerCarton || null
+              });
+            }
+          }
+        });
+        
+        if (selectedRowsData.length === 0) {
+          alert('No valid rows selected');
+          if (loadingOverlay) {
+            loadingOverlay.classList.add('hidden');
+          }
+          return;
+        }
+        
+        const requestBody = {
+          username: username,
+          items: selectedRowsData
+        };
+        
+        console.log('Sending material readiness data:', {
+          url: `${apiBase}comm/material-readiness/send`,
+          body: requestBody
+        });
+        
+        const response = await fetch(`${apiBase}comm/material-readiness/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+        
+        const data = await response.json();
+        
+        console.log('Material readiness send response:', { status: response.status, data });
+        
+        if (!response.ok) {
+          throw new Error(data.message || data.error || 'Failed to send material readiness data');
+        }
+        
+        // Success - reload 2nd intimation data and stay on 2nd intimation page
+        if (loadingOverlay) {
+          const loadingText = loadingOverlay.querySelector('.loading-spinner p');
+          if (loadingText) {
+            loadingText.textContent = 'Loading data...';
+          }
+        }
+        
+        const { pendingJobs, dateRange } = await fetchPendingData2ndIntimation(username);
+        showDashboard(username, pendingJobs, dateRange);
+        
+        // Clear selected rows after successful send
+        selectedRows.clear();
+        updateSelectAllButton();
+        updateSendButton();
+        
+        alert(`Successfully sent material readiness data for ${selectedRowsData.length} item(s)`);
+        
+      } else {
+        // Handle 1st intimation (existing logic)
       const requestBody = {
         username: username,
         orderBookingDetailsIds: selectedIds
@@ -1190,21 +1306,22 @@
         throw new Error(data.message || data.error || 'Failed to send messages');
       }
       
-      // Success - show success message with details (only for 1st intimation)
-      if (currentIntimationType === '1st' && data.results && Array.isArray(data.results)) {
-        showSuccessMessage(data.results);
-        // Refresh data after showing success message
-        const { pendingJobs, dateRange } = await fetchPendingDataByType(username, currentIntimationType);
-        showDashboard(username, pendingJobs, dateRange);
-      } else {
-        // For 2nd intimation or if no results, just reload
-        window.location.reload();
+        // Success - show success message with details (only for 1st intimation)
+        if (data.results && Array.isArray(data.results)) {
+          showSuccessMessage(data.results);
+          // Refresh data after showing success message
+          const { pendingJobs, dateRange } = await fetchPendingDataByType(username, currentIntimationType);
+          showDashboard(username, pendingJobs, dateRange);
+        } else {
+          // If no results, just reload
+      window.location.reload();
+        }
       }
     } catch (error) {
-      console.error('Error sending WhatsApp messages:', error);
-      alert('Error sending messages: ' + error.message);
+      console.error('Error sending data:', error);
+      alert('Error sending data: ' + error.message);
     } finally {
-      // Hide loading (though page will reload on success)
+      // Hide loading
       if (loadingOverlay) {
         const loadingText = loadingOverlay.querySelector('.loading-spinner p');
         if (loadingText) {
@@ -1390,12 +1507,12 @@
         formattedDate = newDate;
       } else {
         // Try to parse and format
-        const parsedDate = new Date(newDate);
-        if (!isNaN(parsedDate.getTime())) {
-          const year = parsedDate.getFullYear();
-          const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-          const day = String(parsedDate.getDate()).padStart(2, '0');
-          formattedDate = `${year}-${month}-${day}`;
+      const parsedDate = new Date(newDate);
+      if (!isNaN(parsedDate.getTime())) {
+        const year = parsedDate.getFullYear();
+        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(parsedDate.getDate()).padStart(2, '0');
+        formattedDate = `${year}-${month}-${day}`;
         }
       }
     }
