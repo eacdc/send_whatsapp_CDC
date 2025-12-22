@@ -128,10 +128,10 @@
     try {
       const apiBase = getApiBaseUrl();
       
-      // Calculate date range (last 2 weeks)
+      // Calculate date range (last 4 months)
       const endDate = new Date();
       const startDate = new Date();
-      startDate.setDate(endDate.getDate() - 14);
+      startDate.setMonth(endDate.getMonth() - 4); // Subtract 4 months
       
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
