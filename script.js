@@ -356,9 +356,9 @@
 
     // Only determine columns if we have data, otherwise use stored columnsToShow
     if (pendingData && pendingData.length > 0) {
-      // Get all column keys from the first row, excluding last 4 columns
+      // Get all column keys from the first row, excluding last column
       const allKeys = Object.keys(pendingData[0]);
-      columnsToShow = allKeys.slice(0, -4); // Exclude last 4 columns
+      columnsToShow = allKeys.slice(0, -1); // Exclude last column
       
       // Find the index of Concern Mobile No column
       mobileColumnIndex = columnsToShow.findIndex(key => {
@@ -537,26 +537,24 @@
       }
       
       headerRow.appendChild(th);
-      
-      // Insert Select checkbox column header AFTER Concern Mobile No column
-      if (index === mobileColumnIndex) {
-        const selectTh = document.createElement('th');
-        selectTh.className = 'select-column-header';
-        selectTh.style.width = '90px';
-        selectTh.style.textAlign = 'center';
-        
-        const selectHeaderDiv = document.createElement('div');
-        selectHeaderDiv.className = 'select-column-header-content';
-        
-        const selectLabel = document.createElement('div');
-        selectLabel.className = 'column-header-label';
-        selectLabel.textContent = 'Select';
-        
-        selectHeaderDiv.appendChild(selectLabel);
-        selectTh.appendChild(selectHeaderDiv);
-        headerRow.appendChild(selectTh);
-      }
     });
+    
+    // Add Select checkbox column header as the LAST column
+    const selectTh = document.createElement('th');
+    selectTh.className = 'select-column-header';
+    selectTh.style.width = '90px';
+    selectTh.style.textAlign = 'center';
+    
+    const selectHeaderDiv = document.createElement('div');
+    selectHeaderDiv.className = 'select-column-header-content';
+    
+    const selectLabel = document.createElement('div');
+    selectLabel.className = 'column-header-label';
+    selectLabel.textContent = 'Select';
+    
+    selectHeaderDiv.appendChild(selectLabel);
+    selectTh.appendChild(selectHeaderDiv);
+    headerRow.appendChild(selectTh);
     pendingJobsThead.appendChild(headerRow);
   }
 
@@ -584,8 +582,8 @@
       // Show empty message row in the table body, but keep headers visible
       const emptyRow = document.createElement('tr');
       const emptyCell = document.createElement('td');
-      // Account for select column if it exists (after Concern Mobile No)
-      const totalCols = columnsToShow.length + (mobileColumnIndex >= 0 ? 1 : 0);
+      // Account for select column (always added as last column)
+      const totalCols = columnsToShow.length + 1;
       emptyCell.colSpan = totalCols || 1;
       emptyCell.className = 'empty-table-message';
       emptyCell.textContent = 'No matching records found. Try adjusting your filters.';
@@ -728,33 +726,31 @@
         }
         
         tr.appendChild(td);
-        
-        // Insert Select checkbox column AFTER Concern Mobile No column
-        if (colIndex === mobileColumnIndex) {
-          const selectTd = document.createElement('td');
-          selectTd.className = 'select-column-cell';
-          selectTd.style.textAlign = 'center';
-          
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.dataset.rowId = rowId;
-          checkbox.checked = selectedRows.has(rowId);
-          checkbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-              selectedRows.add(rowId);
-              tr.classList.add('row-selected');
-            } else {
-              selectedRows.delete(rowId);
-              tr.classList.remove('row-selected');
-            }
-            updateSelectAllButton();
-            updateSendButton();
-          });
-          
-          selectTd.appendChild(checkbox);
-          tr.appendChild(selectTd);
-        }
       });
+      
+      // Add Select checkbox column as the LAST column
+      const selectTd = document.createElement('td');
+      selectTd.className = 'select-column-cell';
+      selectTd.style.textAlign = 'center';
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.dataset.rowId = rowId;
+      checkbox.checked = selectedRows.has(rowId);
+      checkbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          selectedRows.add(rowId);
+          tr.classList.add('row-selected');
+        } else {
+          selectedRows.delete(rowId);
+          tr.classList.remove('row-selected');
+        }
+        updateSelectAllButton();
+        updateSendButton();
+      });
+      
+      selectTd.appendChild(checkbox);
+      tr.appendChild(selectTd);
       pendingJobsTbody.appendChild(tr);
     });
     
