@@ -116,12 +116,6 @@
       const pendingJobs = data.pendingData || [];
       const dateRange = data.dateRange || null;
       
-      console.log('Fetched pending data (1st intimation):', {
-        username: data.username,
-        pendingDataCount: pendingJobs.length,
-        dateRange: dateRange
-      });
-      
       return { pendingJobs, dateRange };
     } catch (error) {
       console.error('Error fetching pending data:', error);
@@ -165,12 +159,6 @@
         startDate: startDateStr,
         endDate: endDateStr
       };
-      
-      console.log('Fetched pending data (2nd intimation):', {
-        username: data.username,
-        pendingDataCount: pendingJobs.length,
-        dateRange: dateRange
-      });
       
       return { pendingJobs, dateRange };
     } catch (error) {
@@ -253,15 +241,7 @@
       }
     }
     // Display pending jobs if data is available
-    console.log('showDashboard - pendingJobsData:', {
-      hasData: !!pendingJobsData,
-      isArray: Array.isArray(pendingJobsData),
-      length: pendingJobsData?.length,
-      sample: pendingJobsData?.[0]
-    });
-    
     if (pendingJobsData && Array.isArray(pendingJobsData) && pendingJobsData.length > 0) {
-      console.log('Displaying pending jobs:', pendingJobsData.length, 'items');
       pendingData = pendingJobsData;
       filteredData = [...pendingData];
       columnFilters = {};
@@ -269,11 +249,6 @@
       renderPendingJobsTable();
       updateSendButton();
     } else {
-      console.log('No pending jobs data available or empty array', {
-        pendingJobsData,
-        isArray: Array.isArray(pendingJobsData),
-        length: pendingJobsData?.length
-      });
       // Clear table if no data
       if (pendingJobsThead) pendingJobsThead.innerHTML = '';
       if (pendingJobsTbody) pendingJobsTbody.innerHTML = '';
@@ -326,14 +301,6 @@
       // Show dashboard with pending data
       const pendingJobs = data.pendingData || [];
       const dateRange = data.dateRange || null;
-      
-      console.log('Login response data:', {
-        username: data.username,
-        pendingDataCount: pendingJobs.length,
-        dateRange: dateRange,
-        samplePendingData: pendingJobs[0],
-        firstRowKeys: pendingJobs[0] ? Object.keys(pendingJobs[0]) : []
-      });
       
       // Use the same fetchPendingData function for consistency
       showDashboard(username, pendingJobs, dateRange);
@@ -402,7 +369,6 @@
         );
         
         if (exactMatch) {
-          console.log('Found Final Delivery Date column (exact match):', { key, colName, keyLower });
           return true;
         }
         
@@ -412,7 +378,6 @@
         const hasDate = combined.includes('date');
         
         if (hasFinal && hasDelivery && hasDate) {
-          console.log('Found Final Delivery Date column (keyword match):', { key, colName, keyLower });
           return true;
         }
         
@@ -421,7 +386,6 @@
       
       // Fallback: if not found, try to find by position (usually one of the last date columns)
       if (finalDeliveryDateColumnIndex === -1) {
-        console.warn('Final Delivery Date column not found by name, trying fallback...');
         // Look for date columns and pick the last one (usually Final Delivery Date)
         // But exclude ID columns
         const dateColumnIndices = [];
@@ -439,15 +403,9 @@
             dateColumnIndices.push({ index: idx, key, colName });
           }
         });
-        console.log('Date columns found:', dateColumnIndices);
         if (dateColumnIndices.length > 0) {
           // Usually Final Delivery Date is the last date column
           finalDeliveryDateColumnIndex = dateColumnIndices[dateColumnIndices.length - 1].index;
-          console.log('Using fallback: Last date column as Final Delivery Date', {
-            index: finalDeliveryDateColumnIndex,
-            column: columnsToShow[finalDeliveryDateColumnIndex],
-            allDateColumns: dateColumnIndices
-          });
         }
       }
       
@@ -471,19 +429,6 @@
                (colName.includes('client') && colName.includes('name'));
       });
       
-      console.log('Column detection:', {
-        mobileColumnIndex,
-        finalDeliveryDateColumnIndex,
-        jobNameColumnIndex,
-        clientNameColumnIndex,
-        allColumns: columnsToShow.map((k, idx) => ({
-          index: idx,
-          key: k,
-          formatted: formatColumnName(k),
-          isDate: isDateColumn(formatColumnName(k)),
-          isFinalDelivery: idx === finalDeliveryDateColumnIndex
-        }))
-      });
     }
 
     // If no columns determined yet, don't render (shouldn't happen, but safety check)
@@ -621,13 +566,6 @@
         
         // Check if this is Final Delivery Date column - add editable input
         if (colIndex === finalDeliveryDateColumnIndex && finalDeliveryDateColumnIndex >= 0) {
-          console.log('Adding editable input to Final Delivery Date cell', {
-            colIndex,
-            finalDeliveryDateColumnIndex,
-            columnName,
-            value
-          });
-          
           const dateInput = document.createElement('input');
           dateInput.type = 'text';
           dateInput.className = 'editable-date-input';
@@ -683,12 +621,23 @@
               return;
             }
             
-            // Store reference to the input for updating after API call
-            const inputElement = dateInput;
-            const originalValue = value;
-            
-            // Update the date (pass input element and original value for local update)
-            updateExpectedDeliveryDate(orderBookingDetailsID, convertedDate, inputElement, originalValue);
+            // For 2nd intimation, only update locally (no API call)
+            if (currentIntimationType === '2nd') {
+              // Store original value and column key for local update
+              const originalValue = value;
+              const columnKey = key;
+              
+              // Update local data only
+              updateLocalColumnValue(row, columnKey, convertedDate);
+              
+              // Update the input field to show the formatted date
+              dateInput.value = formatDate(convertedDate);
+            } else {
+              // For 1st intimation, call API to update database
+              const inputElement = dateInput;
+              const originalValue = value;
+              updateExpectedDeliveryDate(orderBookingDetailsID, convertedDate, inputElement, originalValue);
+            }
           });
           
           td.appendChild(dateInput);
@@ -840,12 +789,6 @@
     
     const hasSelections = selectedRows.size > 0;
     btnSendWhatsApp.disabled = !hasSelections;
-    
-    console.log('Update Send Button:', {
-      selectedRowsCount: selectedRows.size,
-      hasSelections,
-      disabled: !hasSelections
-    });
   }
   
   // Update Select All/Deselect All button visibility and state
@@ -928,7 +871,7 @@
       return;
     }
 
-    console.log('Rendering table with', filteredData.length, 'rows');
+    // console.log('Rendering table with', filteredData.length, 'rows');
 
     // Always show table structure, even if no data
     // Headers should always be visible
@@ -1102,7 +1045,7 @@
         }
       }
     });
-    console.log('Selected OrderBookingDetailsIDs:', selectedIds);
+    // console.log('Selected OrderBookingDetailsIDs:', selectedIds);
     return selectedIds;
   }
   
@@ -1111,7 +1054,7 @@
     const selectedIds = getSelectedOrderBookingDetailsIDs();
     const count = selectedIds.length;
     
-    console.log('Show confirmation modal:', { count, selectedIds });
+    // console.log('Show confirmation modal:', { count, selectedIds });
     
     if (count === 0) {
       alert('Please select at least one row to send messages.');
@@ -1124,7 +1067,7 @@
     
     if (confirmationModal) {
       confirmationModal.classList.remove('hidden');
-      console.log('Modal shown');
+      // console.log('Modal shown');
     } else {
       console.error('Confirmation modal element not found');
     }
@@ -1176,25 +1119,6 @@
         const noOfCartonKey = colsLength >= 2 ? columnsToShow[colsLength - 2] : null; // 2nd last
         const qtyPerCartonKey = colsLength >= 1 ? columnsToShow[colsLength - 1] : null; // last
         
-        console.log('Last 3 columns in UI:', {
-          '3rd Last Column (readyForDispatchDate)': {
-            key: readyForDispatchDateKey,
-            index: colsLength - 3,
-            formattedName: readyForDispatchDateKey ? formatColumnName(readyForDispatchDateKey) : 'N/A'
-          },
-          '2nd Last Column (noOfCarton)': {
-            key: noOfCartonKey,
-            index: colsLength - 2,
-            formattedName: noOfCartonKey ? formatColumnName(noOfCartonKey) : 'N/A'
-          },
-          'Last Column (qtyPerCarton)': {
-            key: qtyPerCartonKey,
-            index: colsLength - 1,
-            formattedName: qtyPerCartonKey ? formatColumnName(qtyPerCartonKey) : 'N/A'
-          },
-          totalColumns: colsLength
-        });
-        
         filteredData.forEach((row, idx) => {
           const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
           if (selectedRows.has(rowId)) {
@@ -1204,23 +1128,6 @@
             let readyForDispatchDate = readyForDispatchDateKey ? row[readyForDispatchDateKey] : null;
             let noOfCarton = noOfCartonKey ? row[noOfCartonKey] : null;
             let qtyPerCarton = qtyPerCartonKey ? row[qtyPerCartonKey] : null;
-            
-            // Log the raw values from the last 3 columns for this row
-            console.log(`Row ${orderBookingDetailsId} - Last 3 column values:`, {
-              orderBookingDetailsId: orderBookingDetailsId,
-              [readyForDispatchDateKey || '3rd Last']: {
-                rawValue: readyForDispatchDate,
-                type: typeof readyForDispatchDate
-              },
-              [noOfCartonKey || '2nd Last']: {
-                rawValue: noOfCarton,
-                type: typeof noOfCarton
-              },
-              [qtyPerCartonKey || 'Last']: {
-                rawValue: qtyPerCarton,
-                type: typeof qtyPerCarton
-              }
-            });
             
             // Convert date to YYYY-MM-DD format if needed
             if (readyForDispatchDate) {
@@ -1252,17 +1159,9 @@
             noOfCarton = noOfCarton != null ? parseInt(noOfCarton, 10) : null;
             qtyPerCarton = qtyPerCarton != null ? parseInt(qtyPerCarton, 10) : null;
             
-            // Log the processed values after conversion
-            console.log(`Row ${orderBookingDetailsId} - Processed values for API:`, {
-              orderBookingDetailsId: [Number(orderBookingDetailsId)],
-              readyForDispatchDate: readyForDispatchDate || null,
-              noOfCarton: noOfCarton,
-              qtyPerCarton: qtyPerCarton
-            });
-            
             if (orderBookingDetailsId) {
               selectedRowsData.push({
-                orderBookingDetailsId: [Number(orderBookingDetailsId)],
+                orderBookingDetailsId: Number(orderBookingDetailsId),
                 readyForDispatchDate: readyForDispatchDate || null,
                 noOfCarton: noOfCarton || null,
                 qtyPerCarton: qtyPerCarton || null
@@ -1284,11 +1183,6 @@
           items: selectedRowsData
         };
         
-        console.log('Sending material readiness data:', {
-          url: `${apiBase}comm/material-readiness/send`,
-          body: requestBody
-        });
-        
         const response = await fetch(`${apiBase}comm/material-readiness/send`, {
           method: 'POST',
           headers: {
@@ -1298,8 +1192,6 @@
         });
         
         const data = await response.json();
-        
-        console.log('Material readiness send response:', { status: response.status, data });
         
         if (!response.ok) {
           throw new Error(data.message || data.error || 'Failed to send material readiness data');
@@ -1330,11 +1222,6 @@
         orderBookingDetailsIds: selectedIds
       };
       
-      console.log('Sending WhatsApp messages:', {
-        url: `${apiBase}comm/first-intimation/send`,
-        body: requestBody
-      });
-      
       const response = await fetch(`${apiBase}comm/first-intimation/send`, {
         method: 'POST',
         headers: {
@@ -1345,7 +1232,7 @@
       
       const data = await response.json();
       
-      console.log('Send response:', { status: response.status, data });
+      // console.log('Send response:', { status: response.status, data });
       
       if (!response.ok) {
         throw new Error(data.message || data.error || 'Failed to send messages');
@@ -1449,10 +1336,10 @@
   
   // Send button click handler
   if (btnSendWhatsApp) {
-    console.log('Setting up send button event handler');
+    // console.log('Setting up send button event handler');
     btnSendWhatsApp.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('Send button clicked');
+      // console.log('Send button clicked');
       showConfirmationModal();
     });
   } else {
@@ -1463,7 +1350,7 @@
   if (btnConfirmYes) {
     btnConfirmYes.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('Confirm Yes clicked');
+      // console.log('Confirm Yes clicked');
       sendWhatsAppMessages();
     });
   } else {
@@ -1473,7 +1360,7 @@
   if (btnConfirmNo) {
     btnConfirmNo.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('Confirm No clicked');
+      // console.log('Confirm No clicked');
       hideConfirmationModal();
     });
   } else {
@@ -1579,11 +1466,6 @@
         throw new Error('User not logged in');
       }
       
-      console.log('Updating delivery date:', {
-        orderBookingDetailsID,
-        newDate: formattedDate
-      });
-      
       // Call the update procedure via API
       const response = await fetch(`${apiBase}whatsapp/update-delivery-date`, {
         method: 'POST',
@@ -1603,7 +1485,7 @@
         throw new Error(data.error || data.message || 'Failed to update delivery date');
       }
       
-      console.log('Delivery date updated successfully');
+      // console.log('Delivery date updated successfully');
       
       // Update local data instead of reloading
       if (finalDeliveryDateColumnIndex >= 0 && columnsToShow && columnsToShow.length > 0) {
@@ -1665,12 +1547,6 @@
       console.warn('Row ID not found for local update');
       return;
     }
-    
-    console.log('Updating local column value:', {
-      rowId,
-      columnKey,
-      newValue
-    });
     
     // Update pendingData
     const pendingRow = pendingData.find(r => 
