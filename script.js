@@ -1814,7 +1814,7 @@
     }
     
     // Confirm with user
-    const confirmMessage = `Are you sure you want to update delivery dates for ${dateChangeSelectedRows.size} selected item(s)?`;
+    const confirmMessage = `Are you sure you want to update delivery dates and send WhatsApp messages for ${dateChangeSelectedRows.size} selected item(s)?`;
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -1823,7 +1823,7 @@
     if (loadingOverlay) {
       const loadingText = loadingOverlay.querySelector('.loading-spinner p');
       if (loadingText) {
-        loadingText.textContent = 'Updating delivery dates...';
+        loadingText.textContent = 'Updating delivery dates and sending messages...';
       }
       loadingOverlay.classList.remove('hidden');
     }
@@ -1880,53 +1880,35 @@
         return;
       }
       
-      // Call the same API endpoint used in 1st intimation page
-      // This endpoint calls the comm_update_expected_delivery_date stored procedure
-      // Update each row individually (the API endpoint handles one at a time)
-      let successCount = 0;
-      let errorCount = 0;
-      const errors = [];
+      // Call the new endpoint that updates delivery dates AND sends WhatsApp messages
+      // This endpoint calls comm_update_expected_delivery_date procedure and sends messages
+      const response = await fetch(`${apiBase}whatsapp/update-delivery-dates-and-send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: username,
+          items: updates.map(update => ({
+            orderBookingDetailsID: update.orderBookingDetailsID,
+            newExpectedDeliveryDate: update.newExpectedDeliveryDate
+          }))
+        }),
+      });
       
-      for (const update of updates) {
-        try {
-          // This calls /whatsapp/update-delivery-date which executes comm_update_expected_delivery_date procedure
-          const response = await fetch(`${apiBase}whatsapp/update-delivery-date`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              username: username,
-              orderBookingDetailsID: update.orderBookingDetailsID,
-              newExpectedDeliveryDate: update.newExpectedDeliveryDate
-            }),
-          });
-          
-          const data = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(data.error || data.message || 'Failed to update delivery date');
-          }
-          
-          successCount++;
-        } catch (error) {
-          errorCount++;
-          errors.push(`OrderBookingDetailsID ${update.orderBookingDetailsID}: ${error.message}`);
-        }
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to update delivery dates and send messages');
       }
       
-      // Show result
-      if (errorCount === 0) {
-        alert(`Successfully updated delivery dates for ${successCount} item(s)`);
-      } else {
-        alert(`Updated ${successCount} item(s) successfully. ${errorCount} failed:\n${errors.join('\n')}`);
-      }
+      // Show success message
+      const successCount = updates.length;
+      alert(`Successfully updated delivery dates and sent messages for ${successCount} item(s)`);
       
       // Refresh data after successful updates
-      if (successCount > 0) {
-        const { pendingJobs, dateRange } = await fetchPendingData2ndIntimation(username);
-        showDashboard(username, pendingJobs, dateRange);
-      }
+      const { pendingJobs, dateRange } = await fetchPendingData2ndIntimation(username);
+      showDashboard(username, pendingJobs, dateRange);
       
     } catch (error) {
       console.error('Error updating delivery dates:', error);
