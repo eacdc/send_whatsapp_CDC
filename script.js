@@ -90,10 +90,12 @@
   let filteredData = [];
   let columnFilters = {};
   let selectedRows = new Set(); // Store selected row IDs
+  let dateChangeSelectedRows = new Set(); // Store row IDs with date change checkbox selected (for 2nd intimation)
   let mobileColumnIndex = -1; // Index of Concern Mobile No column
   let finalDeliveryDateColumnIndex = -1; // Index of Final Delivery Date column
   let jobNameColumnIndex = -1; // Index of Job Name column
   let clientNameColumnIndex = -1; // Index of Client Name column
+  let committedDeliveryDateColumnIndex = -1; // Index of Committed Delivery Date column (9th column, index 8)
 
   // Fetch pending data from backend (1st intimation)
   async function fetchPendingData(username) {
@@ -246,6 +248,7 @@
       filteredData = [...pendingData];
       columnFilters = {};
       selectedRows.clear(); // Clear selections when new data is loaded
+      dateChangeSelectedRows.clear(); // Clear date change selections when new data is loaded
       renderPendingJobsTable();
       updateSendButton();
     } else {
@@ -429,6 +432,9 @@
                (colName.includes('client') && colName.includes('name'));
       });
       
+      // Set committed delivery date column index to 8 (9th column, 0-indexed)
+      committedDeliveryDateColumnIndex = 8;
+      
     }
 
     // If no columns determined yet, don't render (shouldn't happen, but safety check)
@@ -487,6 +493,25 @@
       }
       
       headerRow.appendChild(th);
+      
+      // For 2nd intimation, add date change selection checkbox column after 9th column (index 8)
+      if (currentIntimationType === '2nd' && index === committedDeliveryDateColumnIndex && committedDeliveryDateColumnIndex >= 0) {
+        const dateChangeTh = document.createElement('th');
+        dateChangeTh.className = 'date-change-column-header';
+        dateChangeTh.style.width = '150px';
+        dateChangeTh.style.textAlign = 'center';
+        
+        const dateChangeHeaderDiv = document.createElement('div');
+        dateChangeHeaderDiv.className = 'date-change-column-header-content';
+        
+        const dateChangeLabel = document.createElement('div');
+        dateChangeLabel.className = 'column-header-label';
+        dateChangeLabel.textContent = 'Date Change Selection';
+        
+        dateChangeHeaderDiv.appendChild(dateChangeLabel);
+        dateChangeTh.appendChild(dateChangeHeaderDiv);
+        headerRow.appendChild(dateChangeTh);
+      }
     });
       
     // Add Select checkbox column header as the LAST column
@@ -533,7 +558,11 @@
       const emptyRow = document.createElement('tr');
       const emptyCell = document.createElement('td');
       // Account for select column (always added as last column)
-      const totalCols = columnsToShow.length + 1;
+      // Also account for date change checkbox column for 2nd intimation (after 9th column)
+      let totalCols = columnsToShow.length + 1; // +1 for Select column
+      if (currentIntimationType === '2nd') {
+        totalCols += 1; // +1 for date change checkbox column
+      }
       emptyCell.colSpan = totalCols || 1;
       emptyCell.className = 'empty-table-message';
       emptyCell.textContent = 'No matching records found. Try adjusting your filters.';
@@ -564,8 +593,81 @@
         const value = row[key];
         const columnName = formatColumnName(key);
         
-        // Check if this is Final Delivery Date column - add editable input
-        if (colIndex === finalDeliveryDateColumnIndex && finalDeliveryDateColumnIndex >= 0) {
+        // Check if this is the 9th column (committed delivery date) for 2nd intimation
+        // Make it editable if the date change checkbox is checked
+        if (colIndex === committedDeliveryDateColumnIndex && committedDeliveryDateColumnIndex >= 0 && currentIntimationType === '2nd') {
+          const isDateChangeSelected = dateChangeSelectedRows.has(rowId);
+          
+          if (isDateChangeSelected) {
+            // Make it editable (input field)
+            const dateInput = document.createElement('input');
+            dateInput.type = 'text';
+            dateInput.className = 'editable-date-input';
+            dateInput.placeholder = 'DD-MM-YYYY';
+            
+            // Set initial value in DD-MM-YYYY format
+            if (value !== null && value !== undefined) {
+              dateInput.value = formatDate(value);
+            } else {
+              dateInput.value = '';
+            }
+            
+            // Store the orderBookingDetailsID for later use
+            const orderBookingDetailsID = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+            
+            // Handle Enter key press
+            dateInput.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                dateInput.blur();
+              }
+            });
+            
+            // Handle blur (when user clicks outside)
+            dateInput.addEventListener('blur', () => {
+              const inputValue = dateInput.value.trim();
+              
+              if (!inputValue) {
+                // Restore original value if empty
+                if (value !== null && value !== undefined) {
+                  dateInput.value = formatDate(value);
+                }
+                return;
+              }
+              
+              // Convert DD-MM-YYYY to YYYY-MM-DD
+              const convertedDate = convertDDMMYYYYToYYYYMMDD(inputValue);
+              
+              if (!convertedDate) {
+                alert('Invalid date format. Please use DD-MM-YYYY format (e.g., 25-12-2024)');
+                // Restore original value
+                if (value !== null && value !== undefined) {
+                  dateInput.value = formatDate(value);
+                } else {
+                  dateInput.value = '';
+                }
+                return;
+              }
+              
+              // Update local data only (for 2nd intimation)
+              const originalValue = value;
+              const columnKey = key;
+              updateLocalColumnValue(row, columnKey, convertedDate);
+              
+              // Update the input field to show the formatted date
+              dateInput.value = formatDate(convertedDate);
+            });
+            
+            td.appendChild(dateInput);
+          } else {
+            // Display as regular text (not editable)
+            if (value !== null && value !== undefined) {
+              td.textContent = formatDate(value);
+            } else {
+              td.textContent = '';
+            }
+          }
+        } else if (colIndex === finalDeliveryDateColumnIndex && finalDeliveryDateColumnIndex >= 0) {
           const dateInput = document.createElement('input');
           dateInput.type = 'text';
           dateInput.className = 'editable-date-input';
@@ -751,6 +853,31 @@
         }
         
         tr.appendChild(td);
+        
+        // For 2nd intimation, add date change selection checkbox column after 9th column (index 8)
+        if (currentIntimationType === '2nd' && colIndex === committedDeliveryDateColumnIndex && committedDeliveryDateColumnIndex >= 0) {
+          const dateChangeTd = document.createElement('td');
+          dateChangeTd.className = 'date-change-column-cell';
+          dateChangeTd.style.textAlign = 'center';
+          
+          const dateChangeCheckbox = document.createElement('input');
+          dateChangeCheckbox.type = 'checkbox';
+          dateChangeCheckbox.dataset.rowId = rowId;
+          dateChangeCheckbox.checked = dateChangeSelectedRows.has(rowId);
+          
+          dateChangeCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              dateChangeSelectedRows.add(rowId);
+            } else {
+              dateChangeSelectedRows.delete(rowId);
+            }
+            // Re-render the row to update the 9th column's editability
+            renderTableBody();
+          });
+          
+          dateChangeTd.appendChild(dateChangeCheckbox);
+          tr.appendChild(dateChangeTd);
+        }
       });
         
       // Add Select checkbox column as the LAST column
@@ -1609,6 +1736,7 @@
     filteredData = [];
     columnFilters = {};
     selectedRows.clear();
+    dateChangeSelectedRows.clear();
     if (selectAllContainer) selectAllContainer.classList.add('hidden');
     if (btnSendWhatsApp) btnSendWhatsApp.disabled = true;
     showLogin();
@@ -1624,6 +1752,7 @@
       btn1stIntimation.classList.add('active');
       if (btn2ndIntimation) btn2ndIntimation.classList.remove('active');
       currentIntimationType = '1st';
+      dateChangeSelectedRows.clear(); // Clear date change selections when switching to 1st intimation
       
       // Fetch and display 1st intimation data
       const username = localStorage.getItem('whatsapp_username');
@@ -1650,6 +1779,7 @@
       btn2ndIntimation.classList.add('active');
       if (btn1stIntimation) btn1stIntimation.classList.remove('active');
       currentIntimationType = '2nd';
+      dateChangeSelectedRows.clear(); // Clear date change selections when switching to 2nd intimation
       
       // Fetch and display 2nd intimation data
       const username = localStorage.getItem('whatsapp_username');
