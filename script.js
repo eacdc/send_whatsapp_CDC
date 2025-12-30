@@ -1799,7 +1799,8 @@
     currentEditingDateTextElement = null;
   }
   
-  // Send delivery date updates for selected rows
+  // Send delivery date updates for selected rows (2nd intimation)
+  // This calls the same stored procedure (comm_update_expected_delivery_date) used in 1st intimation page
   async function sendDeliveryDateUpdates() {
     const username = localStorage.getItem('whatsapp_username');
     if (!username) {
@@ -1879,13 +1880,16 @@
         return;
       }
       
-      // Update each row individually (since the API endpoint handles one at a time)
+      // Call the same API endpoint used in 1st intimation page
+      // This endpoint calls the comm_update_expected_delivery_date stored procedure
+      // Update each row individually (the API endpoint handles one at a time)
       let successCount = 0;
       let errorCount = 0;
       const errors = [];
       
       for (const update of updates) {
         try {
+          // This calls /whatsapp/update-delivery-date which executes comm_update_expected_delivery_date procedure
           const response = await fetch(`${apiBase}whatsapp/update-delivery-date`, {
             method: 'POST',
             headers: {
