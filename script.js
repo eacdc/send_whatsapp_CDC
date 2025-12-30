@@ -64,6 +64,7 @@
   const selectAllContainer = document.getElementById('select-all-container');
   const btnSelectAll = document.getElementById('btn-select-all');
   const btnSendWhatsApp = document.getElementById('btn-send-whatsapp');
+  const btnSendDeliveryDateUpdate = document.getElementById('btn-send-delivery-date-update');
   const btn1stIntimation = document.getElementById('btn-1st-intimation');
   const btn2ndIntimation = document.getElementById('btn-2nd-intimation');
   const confirmationModal = document.getElementById('confirmation-modal');
@@ -251,6 +252,8 @@
       dateChangeSelectedRows.clear(); // Clear date change selections when new data is loaded
       renderPendingJobsTable();
       updateSendButton();
+      updateDeliveryDateUpdateButton();
+      updateButtonTexts();
     } else {
       // Clear table if no data
       if (pendingJobsThead) pendingJobsThead.innerHTML = '';
@@ -263,8 +266,11 @@
           : 'No pending jobs data available';
       }
       if (btnSendWhatsApp) btnSendWhatsApp.disabled = true;
+      if (btnSendDeliveryDateUpdate) btnSendDeliveryDateUpdate.disabled = true;
       updateSelectAllButton();
+      updateButtonTexts();
     }
+    updateButtonTexts();
   }
 
   // Login handler
@@ -870,18 +876,39 @@
           dateChangeCheckbox.type = 'checkbox';
           dateChangeCheckbox.dataset.rowId = rowId;
           dateChangeCheckbox.checked = dateChangeSelectedRows.has(rowId);
+          // Disable if Select checkbox is checked for this row
+          dateChangeCheckbox.disabled = selectedRows.has(rowId);
           
           // Store the column key for later use
           const committedDateColumnKey = key;
           
           dateChangeCheckbox.addEventListener('change', (e) => {
             if (e.target.checked) {
+              // If this checkbox is checked, uncheck and disable the Select checkbox for this row
               dateChangeSelectedRows.add(rowId);
+              selectedRows.delete(rowId);
+              
+              // Find and uncheck the Select checkbox in the same row
+              const selectCheckbox = tr.querySelector('td.select-column-cell input[type="checkbox"]');
+              if (selectCheckbox) {
+                selectCheckbox.checked = false;
+                selectCheckbox.disabled = true;
+              }
+              tr.classList.remove('row-selected');
             } else {
               dateChangeSelectedRows.delete(rowId);
+              
+              // Re-enable the Select checkbox for this row
+              const selectCheckbox = tr.querySelector('td.select-column-cell input[type="checkbox"]');
+              if (selectCheckbox) {
+                selectCheckbox.disabled = false;
+              }
             }
             // Update only the 9th column cell in this specific row (much faster than re-rendering entire table)
             updateCommittedDeliveryDateCell(tr, rowId, row, committedDateColumnKey);
+            updateSendButton();
+            updateDeliveryDateUpdateButton();
+            updateSelectAllButton();
           });
           
           dateChangeTd.appendChild(dateChangeCheckbox);
@@ -898,16 +925,40 @@
           checkbox.type = 'checkbox';
           checkbox.dataset.rowId = rowId;
           checkbox.checked = selectedRows.has(rowId);
+          // Disable if Date Change checkbox is checked for this row
+          checkbox.disabled = dateChangeSelectedRows.has(rowId);
           checkbox.addEventListener('change', (e) => {
             if (e.target.checked) {
+              // If this checkbox is checked, uncheck and disable the Date Change checkbox for this row
               selectedRows.add(rowId);
+              dateChangeSelectedRows.delete(rowId);
               tr.classList.add('row-selected');
+              
+              // Find and uncheck the Date Change checkbox in the same row
+              const dateChangeCheckbox = tr.querySelector('td.date-change-column-cell input[type="checkbox"]');
+              if (dateChangeCheckbox) {
+                dateChangeCheckbox.checked = false;
+                dateChangeCheckbox.disabled = true;
+              }
+              
+              // Update the 9th column to make it non-editable
+              const committedDateColumnKey = columnsToShow[committedDeliveryDateColumnIndex];
+              if (committedDateColumnKey) {
+                updateCommittedDeliveryDateCell(tr, rowId, row, committedDateColumnKey);
+              }
             } else {
               selectedRows.delete(rowId);
               tr.classList.remove('row-selected');
+              
+              // Re-enable the Date Change checkbox for this row
+              const dateChangeCheckbox = tr.querySelector('td.date-change-column-cell input[type="checkbox"]');
+              if (dateChangeCheckbox) {
+                dateChangeCheckbox.disabled = false;
+              }
             }
             updateSelectAllButton();
             updateSendButton();
+            updateDeliveryDateUpdateButton();
           });
           
           selectTd.appendChild(checkbox);
@@ -917,6 +968,7 @@
     
     updateSelectAllButton();
     updateSendButton();
+    updateDeliveryDateUpdateButton();
   }
   
   // Update only the committed delivery date cell (9th column) for a specific row
@@ -1005,12 +1057,47 @@
     }
   }
   
+  // Update button text based on intimation type
+  function updateButtonTexts() {
+    if (btnSendWhatsApp) {
+      if (currentIntimationType === '2nd') {
+        btnSendWhatsApp.textContent = 'Send 2nd Intimation';
+      } else {
+        btnSendWhatsApp.textContent = 'Send';
+      }
+    }
+  }
+  
   // Update Send button state based on selected rows
   function updateSendButton() {
     if (!btnSendWhatsApp) return;
     
+    if (currentIntimationType === '2nd') {
+      // For 2nd intimation, enable only if Select column has selections
+      const hasSelections = selectedRows.size > 0;
+      btnSendWhatsApp.disabled = !hasSelections;
+    } else {
+      // For 1st intimation, use existing logic
     const hasSelections = selectedRows.size > 0;
     btnSendWhatsApp.disabled = !hasSelections;
+    }
+  }
+  
+  // Update Delivery Date Update button state
+  function updateDeliveryDateUpdateButton() {
+    if (!btnSendDeliveryDateUpdate) return;
+    
+    if (currentIntimationType === '2nd') {
+      // Show button for 2nd intimation
+      btnSendDeliveryDateUpdate.style.display = '';
+      // Enable only if Date Change Selection column has selections
+      const hasDateChangeSelections = dateChangeSelectedRows.size > 0;
+      btnSendDeliveryDateUpdate.disabled = !hasDateChangeSelections;
+    } else {
+      // Hide for 1st intimation
+      btnSendDeliveryDateUpdate.style.display = 'none';
+      btnSendDeliveryDateUpdate.disabled = true;
+    }
   }
   
   // Update Select All/Deselect All button visibility and state
@@ -1035,6 +1122,7 @@
     
     // Also update send button
     updateSendButton();
+    updateDeliveryDateUpdateButton();
   }
   
   // Select All / Deselect All button handler
@@ -1117,6 +1205,7 @@
     
     // Update send button and select all button after rendering
     updateSendButton();
+    updateDeliveryDateUpdateButton();
     updateSelectAllButton();
   }
 
@@ -1251,6 +1340,7 @@
     // Only re-render the body, not the entire table (preserves focus on search inputs)
     renderTableBody();
     updateSendButton();
+    updateDeliveryDateUpdateButton();
     updateSelectAllButton();
   }
   
@@ -1434,6 +1524,7 @@
         selectedRows.clear();
         updateSelectAllButton();
         updateSendButton();
+        updateDeliveryDateUpdateButton();
         
         alert(`Successfully sent material readiness data for ${selectedRowsData.length} item(s)`);
         
@@ -1568,6 +1659,16 @@
     console.error('Send button element not found');
   }
   
+  // Send Delivery Date Update button click handler
+  if (btnSendDeliveryDateUpdate) {
+    btnSendDeliveryDateUpdate.addEventListener('click', (e) => {
+      e.preventDefault();
+      sendDeliveryDateUpdates();
+    });
+  } else {
+    console.error('Send Delivery Date Update button element not found');
+  }
+  
   // Confirmation modal handlers
   if (btnConfirmYes) {
     btnConfirmYes.addEventListener('click', (e) => {
@@ -1639,6 +1740,146 @@
     }
     currentEditingOrderBookingDetailsID = null;
     currentEditingDateTextElement = null;
+  }
+  
+  // Send delivery date updates for selected rows
+  async function sendDeliveryDateUpdates() {
+    const username = localStorage.getItem('whatsapp_username');
+    if (!username) {
+      alert('User not logged in');
+      return;
+    }
+    
+    if (dateChangeSelectedRows.size === 0) {
+      alert('No rows selected for date update');
+      return;
+    }
+    
+    // Confirm with user
+    const confirmMessage = `Are you sure you want to update delivery dates for ${dateChangeSelectedRows.size} selected item(s)?`;
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+    
+    // Show loading
+    if (loadingOverlay) {
+      const loadingText = loadingOverlay.querySelector('.loading-spinner p');
+      if (loadingText) {
+        loadingText.textContent = 'Updating delivery dates...';
+      }
+      loadingOverlay.classList.remove('hidden');
+    }
+    
+    try {
+      const apiBase = getApiBaseUrl();
+      const committedDateColumnKey = columnsToShow[committedDeliveryDateColumnIndex];
+      
+      // Get all rows with date change selection and their updated dates
+      const updates = [];
+      filteredData.forEach((row) => {
+        const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+        if (dateChangeSelectedRows.has(rowId) && committedDateColumnKey) {
+          const orderBookingDetailsID = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+          const newDate = row[committedDateColumnKey];
+          
+          if (orderBookingDetailsID && newDate) {
+            // Convert date to YYYY-MM-DD format if needed
+            let formattedDate = newDate;
+            if (typeof newDate === 'string') {
+              // If already in YYYY-MM-DD format, use as-is
+              if (/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+                formattedDate = newDate;
+              } else {
+                // Try to parse and format
+                const parsedDate = new Date(newDate);
+                if (!isNaN(parsedDate.getTime())) {
+                  const year = parsedDate.getFullYear();
+                  const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                  const day = String(parsedDate.getDate()).padStart(2, '0');
+                  formattedDate = `${year}-${month}-${day}`;
+                }
+              }
+            } else if (newDate instanceof Date) {
+              const year = newDate.getFullYear();
+              const month = String(newDate.getMonth() + 1).padStart(2, '0');
+              const day = String(newDate.getDate()).padStart(2, '0');
+              formattedDate = `${year}-${month}-${day}`;
+            }
+            
+            updates.push({
+              orderBookingDetailsID: Number(orderBookingDetailsID),
+              newExpectedDeliveryDate: formattedDate
+            });
+          }
+        }
+      });
+      
+      if (updates.length === 0) {
+        alert('No valid rows to update');
+        if (loadingOverlay) {
+          loadingOverlay.classList.add('hidden');
+        }
+        return;
+      }
+      
+      // Update each row individually (since the API endpoint handles one at a time)
+      let successCount = 0;
+      let errorCount = 0;
+      const errors = [];
+      
+      for (const update of updates) {
+        try {
+          const response = await fetch(`${apiBase}whatsapp/update-delivery-date`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              username: username,
+              orderBookingDetailsID: update.orderBookingDetailsID,
+              newExpectedDeliveryDate: update.newExpectedDeliveryDate
+            }),
+          });
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || data.message || 'Failed to update delivery date');
+          }
+          
+          successCount++;
+        } catch (error) {
+          errorCount++;
+          errors.push(`OrderBookingDetailsID ${update.orderBookingDetailsID}: ${error.message}`);
+        }
+      }
+      
+      // Show result
+      if (errorCount === 0) {
+        alert(`Successfully updated delivery dates for ${successCount} item(s)`);
+      } else {
+        alert(`Updated ${successCount} item(s) successfully. ${errorCount} failed:\n${errors.join('\n')}`);
+      }
+      
+      // Refresh data after successful updates
+      if (successCount > 0) {
+        const { pendingJobs, dateRange } = await fetchPendingData2ndIntimation(username);
+        showDashboard(username, pendingJobs, dateRange);
+      }
+      
+    } catch (error) {
+      console.error('Error updating delivery dates:', error);
+      alert('Error updating delivery dates: ' + error.message);
+    } finally {
+      // Hide loading
+      if (loadingOverlay) {
+        const loadingText = loadingOverlay.querySelector('.loading-spinner p');
+        if (loadingText) {
+          loadingText.textContent = 'Loading...';
+        }
+        loadingOverlay.classList.add('hidden');
+      }
+    }
   }
   
   // Update expected delivery date

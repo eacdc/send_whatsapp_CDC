@@ -592,6 +592,7 @@ button.secondary:hover:not(:disabled) {
   margin-top: 1.5rem;
   display: flex;
   justify-content: flex-end;
+  gap: 1rem;
   padding: 0.5rem 0;
 }
 
