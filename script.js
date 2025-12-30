@@ -498,14 +498,17 @@
       if (currentIntimationType === '2nd' && index === committedDeliveryDateColumnIndex && committedDeliveryDateColumnIndex >= 0) {
         const dateChangeTh = document.createElement('th');
         dateChangeTh.className = 'date-change-column-header';
-        dateChangeTh.style.width = '150px';
+        dateChangeTh.style.width = '90px';
+        dateChangeTh.style.maxWidth = '90px';
+        dateChangeTh.style.minWidth = '90px';
         dateChangeTh.style.textAlign = 'center';
+        dateChangeTh.style.whiteSpace = 'normal';
         
         const dateChangeHeaderDiv = document.createElement('div');
         dateChangeHeaderDiv.className = 'date-change-column-header-content';
         
         const dateChangeLabel = document.createElement('div');
-        dateChangeLabel.className = 'column-header-label';
+        dateChangeLabel.className = 'date-change-column-header-label';
         dateChangeLabel.textContent = 'Date Change Selection';
         
         dateChangeHeaderDiv.appendChild(dateChangeLabel);
@@ -858,6 +861,9 @@
         if (currentIntimationType === '2nd' && colIndex === committedDeliveryDateColumnIndex && committedDeliveryDateColumnIndex >= 0) {
           const dateChangeTd = document.createElement('td');
           dateChangeTd.className = 'date-change-column-cell';
+          dateChangeTd.style.width = '90px';
+          dateChangeTd.style.maxWidth = '90px';
+          dateChangeTd.style.minWidth = '90px';
           dateChangeTd.style.textAlign = 'center';
           
           const dateChangeCheckbox = document.createElement('input');
