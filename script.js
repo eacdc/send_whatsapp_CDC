@@ -876,32 +876,34 @@
           dateChangeCheckbox.type = 'checkbox';
           dateChangeCheckbox.dataset.rowId = rowId;
           dateChangeCheckbox.checked = dateChangeSelectedRows.has(rowId);
-          // Disable if Select checkbox is checked for this row
-          dateChangeCheckbox.disabled = selectedRows.has(rowId);
+          // Disable if ANY Select checkbox is checked (column-level mutual exclusivity)
+          dateChangeCheckbox.disabled = selectedRows.size > 0;
           
           // Store the column key for later use
           const committedDateColumnKey = key;
           
           dateChangeCheckbox.addEventListener('change', (e) => {
             if (e.target.checked) {
-              // If this checkbox is checked, uncheck and disable the Select checkbox for this row
+              // If this checkbox is checked, uncheck all Select checkboxes and disable the entire Select column
               dateChangeSelectedRows.add(rowId);
-              selectedRows.delete(rowId);
+              selectedRows.clear();
               
-              // Find and uncheck the Select checkbox in the same row
-              const selectCheckbox = tr.querySelector('td.select-column-cell input[type="checkbox"]');
-              if (selectCheckbox) {
-                selectCheckbox.checked = false;
-                selectCheckbox.disabled = true;
-              }
-              tr.classList.remove('row-selected');
+              // Uncheck all Select checkboxes and disable the entire Select column
+              toggleSelectColumnCheckboxes(true);
+              const selectCheckboxes = pendingJobsTbody.querySelectorAll('td.select-column-cell input[type="checkbox"]');
+              selectCheckboxes.forEach(cb => {
+                cb.checked = false;
+              });
+              
+              // Remove row-selected class from all rows
+              const allRows = pendingJobsTbody.querySelectorAll('tr');
+              allRows.forEach(row => row.classList.remove('row-selected'));
             } else {
               dateChangeSelectedRows.delete(rowId);
               
-              // Re-enable the Select checkbox for this row
-              const selectCheckbox = tr.querySelector('td.select-column-cell input[type="checkbox"]');
-              if (selectCheckbox) {
-                selectCheckbox.disabled = false;
+              // If no Date Change checkboxes are checked, re-enable the Select column
+              if (dateChangeSelectedRows.size === 0) {
+                toggleSelectColumnCheckboxes(false);
               }
             }
             // Update only the 9th column cell in this specific row (much faster than re-rendering entire table)
@@ -925,35 +927,42 @@
           checkbox.type = 'checkbox';
           checkbox.dataset.rowId = rowId;
           checkbox.checked = selectedRows.has(rowId);
-          // Disable if Date Change checkbox is checked for this row
-          checkbox.disabled = dateChangeSelectedRows.has(rowId);
+          // Disable if ANY Date Change checkbox is checked (column-level mutual exclusivity)
+          checkbox.disabled = currentIntimationType === '2nd' && dateChangeSelectedRows.size > 0;
           checkbox.addEventListener('change', (e) => {
             if (e.target.checked) {
-              // If this checkbox is checked, uncheck and disable the Date Change checkbox for this row
+              // If this checkbox is checked, uncheck all Date Change checkboxes and disable the entire Date Change column
               selectedRows.add(rowId);
-              dateChangeSelectedRows.delete(rowId);
+              dateChangeSelectedRows.clear();
               tr.classList.add('row-selected');
               
-              // Find and uncheck the Date Change checkbox in the same row
-              const dateChangeCheckbox = tr.querySelector('td.date-change-column-cell input[type="checkbox"]');
-              if (dateChangeCheckbox) {
-                dateChangeCheckbox.checked = false;
-                dateChangeCheckbox.disabled = true;
-              }
-              
-              // Update the 9th column to make it non-editable
-              const committedDateColumnKey = columnsToShow[committedDeliveryDateColumnIndex];
-              if (committedDateColumnKey) {
-                updateCommittedDeliveryDateCell(tr, rowId, row, committedDateColumnKey);
+              // Uncheck all Date Change checkboxes and disable the entire Date Change column
+              if (currentIntimationType === '2nd') {
+                toggleDateChangeColumnCheckboxes(true);
+                const dateChangeCheckboxes = pendingJobsTbody.querySelectorAll('td.date-change-column-cell input[type="checkbox"]');
+                dateChangeCheckboxes.forEach(cb => {
+                  cb.checked = false;
+                  const cbRowId = cb.dataset.rowId;
+                  const cbRow = pendingJobsTbody.querySelector(`tr[data-row-id="${cbRowId}"]`);
+                  if (cbRow) {
+                    const committedDateColumnKey = columnsToShow[committedDeliveryDateColumnIndex];
+                    const cbRowData = filteredData.find(r => {
+                      const rId = r.OrderBookingDetailsID || r.orderBookingDetailsID;
+                      return rId == cbRowId;
+                    });
+                    if (committedDateColumnKey && cbRowData) {
+                      updateCommittedDeliveryDateCell(cbRow, cbRowId, cbRowData, committedDateColumnKey);
+                    }
+                  }
+                });
               }
             } else {
               selectedRows.delete(rowId);
               tr.classList.remove('row-selected');
               
-              // Re-enable the Date Change checkbox for this row
-              const dateChangeCheckbox = tr.querySelector('td.date-change-column-cell input[type="checkbox"]');
-              if (dateChangeCheckbox) {
-                dateChangeCheckbox.disabled = false;
+              // If no Select checkboxes are checked, re-enable the Date Change column
+              if (selectedRows.size === 0 && currentIntimationType === '2nd') {
+                toggleDateChangeColumnCheckboxes(false);
               }
             }
             updateSelectAllButton();
@@ -1068,6 +1077,26 @@
     }
   }
   
+  // Helper function to enable/disable all checkboxes in Date Change Selection column
+  function toggleDateChangeColumnCheckboxes(disabled) {
+    if (!pendingJobsTbody || currentIntimationType !== '2nd') return;
+    
+    const dateChangeCheckboxes = pendingJobsTbody.querySelectorAll('td.date-change-column-cell input[type="checkbox"]');
+    dateChangeCheckboxes.forEach(checkbox => {
+      checkbox.disabled = disabled;
+    });
+  }
+  
+  // Helper function to enable/disable all checkboxes in Select column
+  function toggleSelectColumnCheckboxes(disabled) {
+    if (!pendingJobsTbody) return;
+    
+    const selectCheckboxes = pendingJobsTbody.querySelectorAll('td.select-column-cell input[type="checkbox"]');
+    selectCheckboxes.forEach(checkbox => {
+      checkbox.disabled = disabled;
+    });
+  }
+  
   // Update Send button state based on selected rows
   function updateSendButton() {
     if (!btnSendWhatsApp) return;
@@ -1135,39 +1164,67 @@
         // Deselect all selected rows
         selectedRows.clear();
         
-        // Update all checkboxes and row styles
-        const checkboxes = pendingJobsTbody.querySelectorAll('input[type="checkbox"]');
+        // Update Select column checkboxes and row styles
+        const selectCheckboxes = pendingJobsTbody.querySelectorAll('td.select-column-cell input[type="checkbox"]');
         const rows = pendingJobsTbody.querySelectorAll('tr');
         
-        checkboxes.forEach((checkbox) => {
+        selectCheckboxes.forEach((checkbox) => {
           checkbox.checked = false;
         });
         
         rows.forEach((row) => {
           row.classList.remove('row-selected');
-      });
+        });
+        
+        // Re-enable Date Change column if it was disabled
+        if (currentIntimationType === '2nd') {
+          toggleDateChangeColumnCheckboxes(false);
+        }
       } else {
-        // Select all filtered rows
-      filteredData.forEach((row, idx) => {
-        const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
+        // Select all filtered rows in Select column only
+        filteredData.forEach((row, idx) => {
+          const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
           selectedRows.add(rowId);
-      });
+        });
+        
+        // Clear Date Change selections and uncheck all Date Change checkboxes
+        dateChangeSelectedRows.clear();
+        if (currentIntimationType === '2nd') {
+          toggleDateChangeColumnCheckboxes(true);
+          const dateChangeCheckboxes = pendingJobsTbody.querySelectorAll('td.date-change-column-cell input[type="checkbox"]');
+          dateChangeCheckboxes.forEach((checkbox) => {
+            checkbox.checked = false;
+            const cbRowId = checkbox.dataset.rowId;
+            const cbRow = pendingJobsTbody.querySelector(`tr[data-row-id="${cbRowId}"]`);
+            if (cbRow) {
+              const committedDateColumnKey = columnsToShow[committedDeliveryDateColumnIndex];
+              const cbRowData = filteredData.find(r => {
+                const rId = r.OrderBookingDetailsID || r.orderBookingDetailsID;
+                return rId == cbRowId;
+              });
+              if (committedDateColumnKey && cbRowData) {
+                updateCommittedDeliveryDateCell(cbRow, cbRowId, cbRowData, committedDateColumnKey);
+              }
+            }
+          });
+        }
       
-      // Update checkboxes and row styles in DOM
-      const checkboxes = pendingJobsTbody.querySelectorAll('input[type="checkbox"]');
-      const rows = pendingJobsTbody.querySelectorAll('tr');
-      
-        checkboxes.forEach((checkbox) => {
+        // Update Select checkboxes and row styles in DOM
+        const selectCheckboxes = pendingJobsTbody.querySelectorAll('td.select-column-cell input[type="checkbox"]');
+        const rows = pendingJobsTbody.querySelectorAll('tr');
+        
+        selectCheckboxes.forEach((checkbox) => {
           checkbox.checked = true;
         });
         
         rows.forEach((row) => {
-            row.classList.add('row-selected');
-      });
+          row.classList.add('row-selected');
+        });
       }
       
       updateSelectAllButton();
       updateSendButton();
+      updateDeliveryDateUpdateButton();
     });
   }
   
