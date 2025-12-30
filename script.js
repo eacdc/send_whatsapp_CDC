@@ -865,14 +865,17 @@
           dateChangeCheckbox.dataset.rowId = rowId;
           dateChangeCheckbox.checked = dateChangeSelectedRows.has(rowId);
           
+          // Store the column key for later use
+          const committedDateColumnKey = key;
+          
           dateChangeCheckbox.addEventListener('change', (e) => {
             if (e.target.checked) {
               dateChangeSelectedRows.add(rowId);
             } else {
               dateChangeSelectedRows.delete(rowId);
             }
-            // Re-render the row to update the 9th column's editability
-            renderTableBody();
+            // Update only the 9th column cell in this specific row (much faster than re-rendering entire table)
+            updateCommittedDeliveryDateCell(tr, rowId, row, committedDateColumnKey);
           });
           
           dateChangeTd.appendChild(dateChangeCheckbox);
@@ -908,6 +911,92 @@
     
     updateSelectAllButton();
     updateSendButton();
+  }
+  
+  // Update only the committed delivery date cell (9th column) for a specific row
+  function updateCommittedDeliveryDateCell(tr, rowId, row, columnKey) {
+    if (currentIntimationType !== '2nd' || committedDeliveryDateColumnIndex < 0) {
+      return;
+    }
+    
+    // Find the 9th column cell
+    const cells = tr.querySelectorAll('td');
+    const committedDateCellIndex = committedDeliveryDateColumnIndex;
+    
+    if (cells[committedDateCellIndex]) {
+      const isDateChangeSelected = dateChangeSelectedRows.has(rowId);
+      const value = row[columnKey];
+      
+      // Clear the existing cell
+      cells[committedDateCellIndex].innerHTML = '';
+      
+      if (isDateChangeSelected) {
+        // Make it editable (input field)
+        const dateInput = document.createElement('input');
+        dateInput.type = 'text';
+        dateInput.className = 'editable-date-input';
+        dateInput.placeholder = 'DD-MM-YYYY';
+        
+        // Set initial value in DD-MM-YYYY format
+        if (value !== null && value !== undefined) {
+          dateInput.value = formatDate(value);
+        } else {
+          dateInput.value = '';
+        }
+        
+        // Handle Enter key press
+        dateInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            dateInput.blur();
+          }
+        });
+        
+        // Handle blur (when user clicks outside)
+        dateInput.addEventListener('blur', () => {
+          const inputValue = dateInput.value.trim();
+          
+          if (!inputValue) {
+            // Restore original value if empty
+            if (value !== null && value !== undefined) {
+              dateInput.value = formatDate(value);
+            }
+            return;
+          }
+          
+          // Convert DD-MM-YYYY to YYYY-MM-DD
+          const convertedDate = convertDDMMYYYYToYYYYMMDD(inputValue);
+          
+          if (!convertedDate) {
+            alert('Invalid date format. Please use DD-MM-YYYY format (e.g., 25-12-2024)');
+            // Restore original value
+            if (value !== null && value !== undefined) {
+              dateInput.value = formatDate(value);
+            } else {
+              dateInput.value = '';
+            }
+            return;
+          }
+          
+          // Update local data only (for 2nd intimation)
+          updateLocalColumnValue(row, columnKey, convertedDate);
+          
+          // Update the input field to show the formatted date
+          dateInput.value = formatDate(convertedDate);
+        });
+        
+        cells[committedDateCellIndex].appendChild(dateInput);
+        // Focus the input field for better UX
+        setTimeout(() => dateInput.focus(), 10);
+      } else {
+        // Display as regular text (not editable)
+        if (value !== null && value !== undefined) {
+          cells[committedDateCellIndex].textContent = formatDate(value);
+        } else {
+          cells[committedDateCellIndex].textContent = '';
+        }
+      }
+    }
   }
   
   // Update Send button state based on selected rows
