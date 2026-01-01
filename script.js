@@ -339,7 +339,26 @@
       // (these are internal / technical columns you don't want in the UI)
       // If there are fewer than 5 columns, show everything.
       const numToHide = 5;
-      columnsToShow = allKeys.length > numToHide ? allKeys.slice(0, -numToHide) : allKeys.slice();
+      
+      if (currentIntimationType === '2nd') {
+        // For 2nd intimation: Based on column mapping:
+        // Columns 0-15: shown (OrderDate through Qty Per Carton)
+        // Columns 16-20: hidden (DispatchScheduleID, OrderBookingDetailsID, OrderBookingID, JobBookingID, Last Dispatch Date)
+        // Column 21: Segment Name (shown)
+        // So we show columns 0-15, then add column 21 (Segment Name)
+        if (allKeys.length >= 22) {
+          // Show first 16 columns (0-15), then add Segment Name (index 21)
+          columnsToShow = [...allKeys.slice(0, 16), allKeys[21]];
+        } else if (allKeys.length > 6) {
+          // Fallback: if structure is different, hide last 6 then add back the last one
+          columnsToShow = [...allKeys.slice(0, -6), allKeys[allKeys.length - 1]];
+        } else {
+          columnsToShow = allKeys.slice();
+        }
+      } else {
+        // For 1st intimation: Hide the last 5 columns as before
+        columnsToShow = allKeys.length > numToHide ? allKeys.slice(0, -numToHide) : allKeys.slice();
+      }
       
       // Find the index of Concern Mobile No column
       mobileColumnIndex = columnsToShow.findIndex(key => {
@@ -1482,11 +1501,16 @@
         // Get selected rows with their data
         const selectedRowsData = [];
         
-        // Log the last 3 column keys for reference
+        // Get the last 3 column keys (excluding Segment Name which is now the last column)
+        // For 2nd intimation: Segment Name is at the end, so we need columns at positions:
+        // - 3rd last: Readiness Date
+        // - 2nd last: Number of Cartons  
+        // - last (before Segment Name): Qty Per Carton
         const colsLength = columnsToShow.length;
-        const readyForDispatchDateKey = colsLength >= 3 ? columnsToShow[colsLength - 3] : null; // 3rd last
-        const noOfCartonKey = colsLength >= 2 ? columnsToShow[colsLength - 2] : null; // 2nd last
-        const qtyPerCartonKey = colsLength >= 1 ? columnsToShow[colsLength - 1] : null; // last
+        // Segment Name is the last column, so we need to get columns before it
+        const readyForDispatchDateKey = colsLength >= 4 ? columnsToShow[colsLength - 4] : null; // 4th last (before Segment Name)
+        const noOfCartonKey = colsLength >= 3 ? columnsToShow[colsLength - 3] : null; // 3rd last
+        const qtyPerCartonKey = colsLength >= 2 ? columnsToShow[colsLength - 2] : null; // 2nd last (before Segment Name)
         
         filteredData.forEach((row, idx) => {
           const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
