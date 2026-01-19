@@ -451,6 +451,137 @@ button.secondary:hover:not(:disabled) {
   opacity: 0.6;
 }
 
+/* Excel-like Filter Styles */
+.excel-filter-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.date-range-filter,
+.number-filter,
+.text-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.date-filter-input,
+.number-filter-input,
+.text-filter-input {
+  padding: 0.25rem 0.3rem;
+  font-size: 0.6rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  width: 100%;
+  font-family: inherit;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.date-filter-input:focus,
+.number-filter-input:focus,
+.text-filter-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.date-filter-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.date-filter-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+.number-operator,
+.text-operator {
+  padding: 0.25rem 0.3rem;
+  font-size: 0.6rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  width: 100%;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.number-operator:focus,
+.text-operator:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.number-operator option,
+.text-operator option {
+  background: var(--card);
+  color: var(--text);
+}
+
+.filter-clear-btn {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.6rem;
+  background: var(--secondary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+  transition: background 0.2s ease;
+}
+
+.filter-clear-btn:hover {
+  background: #64748b;
+}
+
+/* Sort Button Styles */
+.column-header-label-container {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sort-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.sort-btn {
+  padding: 0.1rem 0.2rem;
+  font-size: 0.6rem;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.sort-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.sort-btn.sort-asc.active,
+.sort-btn.sort-desc.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
 .empty-message {
   text-align: center;
   color: var(--muted);

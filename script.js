@@ -89,7 +89,8 @@
   // Store pending data and filters
   let pendingData = [];
   let filteredData = [];
-  let columnFilters = {};
+  let columnFilters = {}; // Structure: { columnKey: { type: 'text'|'date'|'number', value: ..., operator: ... } }
+  let columnSorting = {}; // Structure: { columnKey: 'asc'|'desc'|null }
   let selectedRows = new Set(); // Store selected row IDs
   let dateChangeSelectedRows = new Set(); // Store row IDs with date change checkbox selected (for 2nd intimation)
   let mobileColumnIndex = -1; // Index of Concern Mobile No column
@@ -248,6 +249,7 @@
       pendingData = pendingJobsData;
       filteredData = [...pendingData];
       columnFilters = {};
+      columnSorting = {};
       selectedRows.clear(); // Clear selections when new data is loaded
       dateChangeSelectedRows.clear(); // Clear date change selections when new data is loaded
       renderPendingJobsTable();
@@ -324,6 +326,188 @@
 
   // Store column keys for reuse
   let columnsToShow = [];
+
+  // Create Excel-like filter UI for a column
+  function createExcelFilter(columnKey, columnType) {
+    const filterContainer = document.createElement('div');
+    filterContainer.className = 'excel-filter-container';
+    
+    const currentFilter = columnFilters[columnKey] || {};
+    
+    if (columnType === 'date') {
+      // Date range filter
+      const dateRangeContainer = document.createElement('div');
+      dateRangeContainer.className = 'date-range-filter';
+      dateRangeContainer.style.display = 'flex';
+      dateRangeContainer.style.flexDirection = 'column';
+      dateRangeContainer.style.gap = '0.25rem';
+      
+      const fromInput = document.createElement('input');
+      fromInput.type = 'date';
+      fromInput.className = 'date-filter-input';
+      fromInput.placeholder = 'From';
+      fromInput.value = currentFilter.fromDate || '';
+      fromInput.style.cssText = 'padding: 0.25rem 0.3rem; font-size: 0.6rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 4px; color: var(--text); width: 100%;';
+      
+      const toInput = document.createElement('input');
+      toInput.type = 'date';
+      toInput.className = 'date-filter-input';
+      toInput.placeholder = 'To';
+      toInput.value = currentFilter.toDate || '';
+      toInput.style.cssText = 'padding: 0.25rem 0.3rem; font-size: 0.6rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 4px; color: var(--text); width: 100%;';
+      
+      const clearBtn = document.createElement('button');
+      clearBtn.textContent = 'Clear';
+      clearBtn.className = 'filter-clear-btn';
+      clearBtn.style.cssText = 'padding: 0.2rem 0.4rem; font-size: 0.6rem; background: var(--secondary); color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;';
+      clearBtn.addEventListener('click', () => {
+        fromInput.value = '';
+        toInput.value = '';
+        delete columnFilters[columnKey];
+        applyFiltersAndSort();
+      });
+      
+      const applyFilter = () => {
+        const from = fromInput.value;
+        const to = toInput.value;
+        if (from || to) {
+          columnFilters[columnKey] = { type: 'date', fromDate: from, toDate: to };
+        } else {
+          delete columnFilters[columnKey];
+        }
+        applyFiltersAndSort();
+      };
+      
+      fromInput.addEventListener('change', applyFilter);
+      toInput.addEventListener('change', applyFilter);
+      
+      dateRangeContainer.appendChild(fromInput);
+      dateRangeContainer.appendChild(toInput);
+      dateRangeContainer.appendChild(clearBtn);
+      filterContainer.appendChild(dateRangeContainer);
+      
+    } else if (columnType === 'number') {
+      // Number comparison filter
+      const numberFilterContainer = document.createElement('div');
+      numberFilterContainer.className = 'number-filter';
+      numberFilterContainer.style.display = 'flex';
+      numberFilterContainer.style.flexDirection = 'column';
+      numberFilterContainer.style.gap = '0.25rem';
+      
+      const operatorSelect = document.createElement('select');
+      operatorSelect.className = 'number-operator';
+      operatorSelect.style.cssText = 'padding: 0.25rem 0.3rem; font-size: 0.6rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 4px; color: var(--text); width: 100%;';
+      operatorSelect.innerHTML = `
+        <option value="equals">Equals</option>
+        <option value="greater">Greater Than</option>
+        <option value="less">Less Than</option>
+        <option value="greaterEqual">Greater or Equal</option>
+        <option value="lessEqual">Less or Equal</option>
+      `;
+      operatorSelect.value = currentFilter.operator || 'equals';
+      
+      const valueInput = document.createElement('input');
+      valueInput.type = 'number';
+      valueInput.className = 'number-filter-input';
+      valueInput.placeholder = 'Value';
+      valueInput.value = currentFilter.value || '';
+      valueInput.style.cssText = 'padding: 0.25rem 0.3rem; font-size: 0.6rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 4px; color: var(--text); width: 100%;';
+      
+      const clearBtn = document.createElement('button');
+      clearBtn.textContent = 'Clear';
+      clearBtn.className = 'filter-clear-btn';
+      clearBtn.style.cssText = 'padding: 0.2rem 0.4rem; font-size: 0.6rem; background: var(--secondary); color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;';
+      clearBtn.addEventListener('click', () => {
+        operatorSelect.value = 'equals';
+        valueInput.value = '';
+        delete columnFilters[columnKey];
+        applyFiltersAndSort();
+      });
+      
+      const applyFilter = () => {
+        const operator = operatorSelect.value;
+        const value = valueInput.value.trim();
+        if (value) {
+          columnFilters[columnKey] = { type: 'number', operator: operator, value: parseFloat(value) };
+        } else {
+          delete columnFilters[columnKey];
+        }
+        applyFiltersAndSort();
+      };
+      
+      operatorSelect.addEventListener('change', applyFilter);
+      valueInput.addEventListener('input', () => {
+        clearTimeout(valueInput._timeout);
+        valueInput._timeout = setTimeout(applyFilter, 300);
+      });
+      
+      numberFilterContainer.appendChild(operatorSelect);
+      numberFilterContainer.appendChild(valueInput);
+      numberFilterContainer.appendChild(clearBtn);
+      filterContainer.appendChild(numberFilterContainer);
+      
+    } else {
+      // Text filter with options
+      const textFilterContainer = document.createElement('div');
+      textFilterContainer.className = 'text-filter';
+      textFilterContainer.style.display = 'flex';
+      textFilterContainer.style.flexDirection = 'column';
+      textFilterContainer.style.gap = '0.25rem';
+      
+      const operatorSelect = document.createElement('select');
+      operatorSelect.className = 'text-operator';
+      operatorSelect.style.cssText = 'padding: 0.25rem 0.3rem; font-size: 0.6rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 4px; color: var(--text); width: 100%;';
+      operatorSelect.innerHTML = `
+        <option value="contains">Contains</option>
+        <option value="equals">Equals</option>
+        <option value="startsWith">Starts With</option>
+        <option value="endsWith">Ends With</option>
+      `;
+      operatorSelect.value = currentFilter.operator || 'contains';
+      
+      const valueInput = document.createElement('input');
+      valueInput.type = 'text';
+      valueInput.className = 'text-filter-input';
+      valueInput.placeholder = 'Filter text...';
+      valueInput.value = currentFilter.value || '';
+      valueInput.style.cssText = 'padding: 0.25rem 0.3rem; font-size: 0.6rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 4px; color: var(--text); width: 100%;';
+      
+      const clearBtn = document.createElement('button');
+      clearBtn.textContent = 'Clear';
+      clearBtn.className = 'filter-clear-btn';
+      clearBtn.style.cssText = 'padding: 0.2rem 0.4rem; font-size: 0.6rem; background: var(--secondary); color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;';
+      clearBtn.addEventListener('click', () => {
+        operatorSelect.value = 'contains';
+        valueInput.value = '';
+        delete columnFilters[columnKey];
+        applyFiltersAndSort();
+      });
+      
+      const applyFilter = () => {
+        const operator = operatorSelect.value;
+        const value = valueInput.value.trim();
+        if (value) {
+          columnFilters[columnKey] = { type: 'text', operator: operator, value: value.toLowerCase() };
+        } else {
+          delete columnFilters[columnKey];
+        }
+        applyFiltersAndSort();
+      };
+      
+      operatorSelect.addEventListener('change', applyFilter);
+      valueInput.addEventListener('input', () => {
+        clearTimeout(valueInput._timeout);
+        valueInput._timeout = setTimeout(applyFilter, 300);
+      });
+      
+      textFilterContainer.appendChild(operatorSelect);
+      textFilterContainer.appendChild(valueInput);
+      textFilterContainer.appendChild(clearBtn);
+      filterContainer.appendChild(textFilterContainer);
+    }
+    
+    return filterContainer;
+  }
 
   // Render table header (only once, with search inputs)
   // Headers should always be visible, even when no data or filtered results
@@ -471,47 +655,139 @@
     // Clear existing header
     pendingJobsThead.innerHTML = '';
 
-    // Create header row with search boxes
+    // Create header row with filter controls
     const headerRow = document.createElement('tr');
+    
+    // Determine column types for 2nd intimation
+    const columnTypes = {};
+    if (currentIntimationType === '2nd' && pendingData && pendingData.length > 0) {
+      columnsToShow.forEach(key => {
+        const columnName = formatColumnName(key);
+        columnTypes[key] = getColumnType(key, columnName, pendingData);
+      });
+    }
     
     columnsToShow.forEach((key, index) => {
       const th = document.createElement('th');
       const headerDiv = document.createElement('div');
       headerDiv.className = 'column-header';
       
+      // Label with sort button
+      const labelContainer = document.createElement('div');
+      labelContainer.className = 'column-header-label-container';
+      labelContainer.style.display = 'flex';
+      labelContainer.style.alignItems = 'center';
+      labelContainer.style.gap = '0.25rem';
+      
       const label = document.createElement('div');
       label.className = 'column-header-label';
       label.textContent = formatColumnName(key);
+      label.style.flex = '1';
       
-      const searchInput = document.createElement('input');
-      searchInput.type = 'text';
-      searchInput.className = 'column-search';
-      searchInput.placeholder = `Filter ${formatColumnName(key)}...`;
-      searchInput.value = columnFilters[key] || '';
-      searchInput.dataset.columnKey = key; // Store the key for reference
-      
-      // Use input event with debouncing for better performance
-      let timeoutId;
-      searchInput.addEventListener('input', (e) => {
-        const value = e.target.value;
-        columnFilters[key] = value.trim().toLowerCase();
+      // Sort buttons (only for 2nd intimation)
+      if (currentIntimationType === '2nd') {
+        const sortContainer = document.createElement('div');
+        sortContainer.className = 'sort-buttons';
+        sortContainer.style.display = 'flex';
+        sortContainer.style.flexDirection = 'column';
+        sortContainer.style.gap = '0.1rem';
         
-        // Clear previous timeout
-        clearTimeout(timeoutId);
+        const sortAsc = document.createElement('button');
+        sortAsc.className = 'sort-btn sort-asc';
+        sortAsc.innerHTML = '▲';
+        sortAsc.title = 'Sort Ascending';
+        sortAsc.style.cssText = 'padding: 0.1rem 0.2rem; font-size: 0.6rem; line-height: 1; background: transparent; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; color: var(--muted);';
+        if (columnSorting[key] === 'asc') {
+          sortAsc.style.background = 'var(--primary)';
+          sortAsc.style.color = 'white';
+        }
+        sortAsc.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (columnSorting[key] === 'asc') {
+            columnSorting[key] = null;
+            sortAsc.style.background = 'transparent';
+            sortAsc.style.color = 'var(--muted)';
+          } else {
+            columnSorting[key] = 'asc';
+            sortAsc.style.background = 'var(--primary)';
+            sortAsc.style.color = 'white';
+            sortDesc.style.background = 'transparent';
+            sortDesc.style.color = 'var(--muted)';
+          }
+          applyFiltersAndSort();
+        });
         
-        // Debounce the filter application (small delay for smooth typing)
-        timeoutId = setTimeout(() => {
-          applyFilters();
-        }, 150);
-      });
+        const sortDesc = document.createElement('button');
+        sortDesc.className = 'sort-btn sort-desc';
+        sortDesc.innerHTML = '▼';
+        sortDesc.title = 'Sort Descending';
+        sortDesc.style.cssText = 'padding: 0.1rem 0.2rem; font-size: 0.6rem; line-height: 1; background: transparent; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; color: var(--muted);';
+        if (columnSorting[key] === 'desc') {
+          sortDesc.style.background = 'var(--primary)';
+          sortDesc.style.color = 'white';
+        }
+        sortDesc.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (columnSorting[key] === 'desc') {
+            columnSorting[key] = null;
+            sortDesc.style.background = 'transparent';
+            sortDesc.style.color = 'var(--muted)';
+          } else {
+            columnSorting[key] = 'desc';
+            sortDesc.style.background = 'var(--primary)';
+            sortDesc.style.color = 'white';
+            sortAsc.style.background = 'transparent';
+            sortAsc.style.color = 'var(--muted)';
+          }
+          applyFiltersAndSort();
+        });
+        
+        sortContainer.appendChild(sortAsc);
+        sortContainer.appendChild(sortDesc);
+        labelContainer.appendChild(label);
+        labelContainer.appendChild(sortContainer);
+      } else {
+        labelContainer.appendChild(label);
+      }
       
-      headerDiv.appendChild(label);
-      headerDiv.appendChild(searchInput);
+      headerDiv.appendChild(labelContainer);
+      
+      // Filter controls (Excel-like for 2nd intimation, simple text search for 1st)
+      if (currentIntimationType === '2nd') {
+        const filterContainer = createExcelFilter(key, columnTypes[key] || 'text');
+        headerDiv.appendChild(filterContainer);
+      } else {
+        // Simple text search for 1st intimation
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'column-search';
+        searchInput.placeholder = `Filter ${formatColumnName(key)}...`;
+        const filterValue = columnFilters[key];
+        searchInput.value = (filterValue && typeof filterValue === 'string') ? filterValue : '';
+        searchInput.dataset.columnKey = key;
+        
+        let timeoutId;
+        searchInput.addEventListener('input', (e) => {
+          const value = e.target.value;
+          if (value.trim()) {
+            columnFilters[key] = value.trim().toLowerCase();
+          } else {
+            delete columnFilters[key];
+          }
+          
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            applyFilters();
+          }, 150);
+        });
+        
+        headerDiv.appendChild(searchInput);
+      }
+      
       th.appendChild(headerDiv);
       
       // Set column width for Job Name and Client Name columns to be the same
       if (index === jobNameColumnIndex || index === clientNameColumnIndex) {
-        // Use a fixed width that matches client name column width
         th.style.width = '150px';
         th.style.maxWidth = '150px';
         th.style.minWidth = '150px';
@@ -1397,27 +1673,172 @@
     return hasDateKeyword || isScheduleDate;
   }
 
-  // Apply filters to data (only re-renders body, not header)
-  function applyFilters() {
+  // Check if a column is a number column
+  function isNumberColumn(columnKey, columnName, sampleValue) {
+    // Check if sample value is a number
+    if (sampleValue !== null && sampleValue !== undefined) {
+      const numValue = Number(sampleValue);
+      if (!isNaN(numValue) && isFinite(numValue)) {
+        // Check if it's an integer (whole number)
+        if (Number.isInteger(numValue)) {
+          return true;
+        }
+      }
+    }
+    
+    // Check column name for number-related keywords
+    const lowerName = columnName.toLowerCase();
+    const numberKeywords = ['qty', 'quantity', 'carton', 'number', 'count', 'amount', 'price', 'total', 'sum'];
+    return numberKeywords.some(keyword => lowerName.includes(keyword));
+  }
+
+  // Get column type (date, number, or text)
+  function getColumnType(columnKey, columnName, sampleData) {
+    if (isDateColumn(columnName)) {
+      return 'date';
+    }
+    
+    // Check sample data to determine if it's a number
+    if (sampleData && sampleData.length > 0) {
+      const sampleValue = sampleData[0][columnKey];
+      if (isNumberColumn(columnKey, columnName, sampleValue)) {
+        return 'number';
+      }
+    }
+    
+    return 'text';
+  }
+
+  // Apply filters and sorting to data (only re-renders body, not header)
+  function applyFiltersAndSort() {
+    // Apply filters
     filteredData = pendingData.filter(row => {
       return Object.keys(columnFilters).every(key => {
-        const filterValue = columnFilters[key];
-        if (!filterValue) return true; // No filter for this column
+        const filter = columnFilters[key];
+        if (!filter) return true; // No filter for this column
         
         const cellValue = row[key];
-        const cellString = cellValue !== null && cellValue !== undefined 
-          ? String(cellValue).toLowerCase() 
-          : '';
         
-        return cellString.includes(filterValue);
+        // Handle different filter types
+        if (filter.type === 'date') {
+          if (!cellValue) return false;
+          const cellDate = new Date(cellValue);
+          if (isNaN(cellDate.getTime())) return false;
+          
+          const fromDate = filter.fromDate ? new Date(filter.fromDate) : null;
+          const toDate = filter.toDate ? new Date(filter.toDate) : null;
+          
+          if (fromDate && cellDate < fromDate) return false;
+          if (toDate && cellDate > toDate) return false;
+          
+          return true;
+        } else if (filter.type === 'number') {
+          const cellNum = Number(cellValue);
+          if (isNaN(cellNum) || !isFinite(cellNum)) return false;
+          
+          const filterValue = Number(filter.value);
+          if (isNaN(filterValue)) return false;
+          
+          switch (filter.operator) {
+            case 'equals':
+              return cellNum === filterValue;
+            case 'greater':
+              return cellNum > filterValue;
+            case 'less':
+              return cellNum < filterValue;
+            case 'greaterEqual':
+              return cellNum >= filterValue;
+            case 'lessEqual':
+              return cellNum <= filterValue;
+            default:
+              return true;
+          }
+        } else if (filter.type === 'text') {
+          const cellString = cellValue !== null && cellValue !== undefined 
+            ? String(cellValue).toLowerCase() 
+            : '';
+          const filterValue = filter.value.toLowerCase();
+          
+          switch (filter.operator) {
+            case 'contains':
+              return cellString.includes(filterValue);
+            case 'equals':
+              return cellString === filterValue;
+            case 'startsWith':
+              return cellString.startsWith(filterValue);
+            case 'endsWith':
+              return cellString.endsWith(filterValue);
+            default:
+              return cellString.includes(filterValue);
+          }
+        } else {
+          // Legacy text filter (for 1st intimation)
+          const filterValue = typeof filter === 'string' ? filter : '';
+          const cellString = cellValue !== null && cellValue !== undefined 
+            ? String(cellValue).toLowerCase() 
+            : '';
+          return cellString.includes(filterValue);
+        }
       });
     });
+
+    // Apply sorting
+    const sortKeys = Object.keys(columnSorting).filter(key => columnSorting[key] !== null);
+    if (sortKeys.length > 0) {
+      filteredData.sort((a, b) => {
+        for (const key of sortKeys) {
+          const sortDirection = columnSorting[key];
+          if (!sortDirection) continue;
+          
+          let aValue = a[key];
+          let bValue = b[key];
+          
+          // Handle null/undefined values
+          if (aValue === null || aValue === undefined) aValue = '';
+          if (bValue === null || bValue === undefined) bValue = '';
+          
+          // Try to parse as numbers
+          const aNum = Number(aValue);
+          const bNum = Number(bValue);
+          const aIsNum = !isNaN(aNum) && isFinite(aNum);
+          const bIsNum = !isNaN(bNum) && isFinite(bNum);
+          
+          let comparison = 0;
+          if (aIsNum && bIsNum) {
+            comparison = aNum - bNum;
+          } else {
+            // Try to parse as dates
+            const aDate = new Date(aValue);
+            const bDate = new Date(bValue);
+            const aIsDate = !isNaN(aDate.getTime());
+            const bIsDate = !isNaN(bDate.getTime());
+            
+            if (aIsDate && bIsDate) {
+              comparison = aDate.getTime() - bDate.getTime();
+            } else {
+              // String comparison
+              comparison = String(aValue).localeCompare(String(bValue));
+            }
+          }
+          
+          if (comparison !== 0) {
+            return sortDirection === 'asc' ? comparison : -comparison;
+          }
+        }
+        return 0;
+      });
+    }
 
     // Only re-render the body, not the entire table (preserves focus on search inputs)
     renderTableBody();
     updateSendButton();
     updateDeliveryDateUpdateButton();
     updateSelectAllButton();
+  }
+
+  // Legacy applyFilters function for 1st intimation
+  function applyFilters() {
+    applyFiltersAndSort();
   }
   
   // Get selected OrderBookingDetailsIDs
@@ -2138,6 +2559,7 @@
     pendingData = [];
     filteredData = [];
     columnFilters = {};
+    columnSorting = {};
     selectedRows.clear();
     dateChangeSelectedRows.clear();
     if (selectAllContainer) selectAllContainer.classList.add('hidden');
@@ -2156,6 +2578,8 @@
       if (btn2ndIntimation) btn2ndIntimation.classList.remove('active');
       currentIntimationType = '1st';
       dateChangeSelectedRows.clear(); // Clear date change selections when switching to 1st intimation
+      columnFilters = {}; // Reset filters
+      columnSorting = {}; // Reset sorting
       
       // Fetch and display 1st intimation data
       const username = localStorage.getItem('whatsapp_username');
@@ -2183,6 +2607,8 @@
       if (btn1stIntimation) btn1stIntimation.classList.remove('active');
       currentIntimationType = '2nd';
       dateChangeSelectedRows.clear(); // Clear date change selections when switching to 2nd intimation
+      columnFilters = {}; // Reset filters
+      columnSorting = {}; // Reset sorting
       
       // Fetch and display 2nd intimation data
       const username = localStorage.getItem('whatsapp_username');
