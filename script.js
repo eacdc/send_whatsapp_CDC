@@ -274,9 +274,6 @@
       if (btnExportExcel) btnExportExcel.disabled = true;
       updateSelectAllButton();
       updateButtonTexts();
-    } else {
-      // Enable export button if there's data
-      if (btnExportExcel) btnExportExcel.disabled = false;
     }
     updateButtonTexts();
   }
