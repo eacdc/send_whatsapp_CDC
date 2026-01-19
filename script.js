@@ -65,6 +65,7 @@
   const btnSelectAll = document.getElementById('btn-select-all');
   const btnSendWhatsApp = document.getElementById('btn-send-whatsapp');
   const btnSendDeliveryDateUpdate = document.getElementById('btn-send-delivery-date-update');
+  const btnExportExcel = document.getElementById('btn-export-excel');
   const btn1stIntimation = document.getElementById('btn-1st-intimation');
   const btn2ndIntimation = document.getElementById('btn-2nd-intimation');
   const confirmationModal = document.getElementById('confirmation-modal');
@@ -255,6 +256,7 @@
       renderPendingJobsTable();
       updateSendButton();
       updateDeliveryDateUpdateButton();
+      if (btnExportExcel) btnExportExcel.disabled = false;
       updateButtonTexts();
     } else {
       // Clear table if no data
@@ -269,8 +271,12 @@
       }
       if (btnSendWhatsApp) btnSendWhatsApp.disabled = true;
       if (btnSendDeliveryDateUpdate) btnSendDeliveryDateUpdate.disabled = true;
+      if (btnExportExcel) btnExportExcel.disabled = true;
       updateSelectAllButton();
       updateButtonTexts();
+    } else {
+      // Enable export button if there's data
+      if (btnExportExcel) btnExportExcel.disabled = false;
     }
     updateButtonTexts();
   }
@@ -1709,6 +1715,108 @@
     return 'text';
   }
 
+  // Export filtered data to Excel (CSV format)
+  function exportToExcel() {
+    if (!filteredData || filteredData.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    if (!columnsToShow || columnsToShow.length === 0) {
+      alert('No columns to export');
+      return;
+    }
+
+    // Build headers array
+    const headers = [];
+    columnsToShow.forEach((key, index) => {
+      headers.push(formatColumnName(key));
+      
+      // For 2nd intimation, add Date Change Selection column after 9th column (index 8)
+      if (currentIntimationType === '2nd' && index === committedDeliveryDateColumnIndex && committedDeliveryDateColumnIndex >= 0) {
+        headers.push('Date Change Selection');
+      }
+    });
+    
+    // Add Select column at the end
+    headers.push('Select');
+    
+    // Create CSV content
+    let csvContent = '';
+    
+    // Add headers
+    csvContent += headers.map(header => {
+      // Escape commas and quotes in headers
+      if (header.includes(',') || header.includes('"')) {
+        return '"' + header.replace(/"/g, '""') + '"';
+      }
+      return header;
+    }).join(',') + '\n';
+    
+    // Add data rows
+    filteredData.forEach((row) => {
+      const rowData = [];
+      
+      columnsToShow.forEach((key, index) => {
+        let value = row[key];
+        
+        // Format the value
+        if (value === null || value === undefined) {
+          value = '';
+        } else {
+          // Format dates to DD-MM-YYYY
+          const columnName = formatColumnName(key);
+          if (isDateColumn(columnName)) {
+            value = formatDate(value);
+          } else {
+            value = String(value);
+          }
+        }
+        
+        // Escape commas, quotes, and newlines
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          value = '"' + value.replace(/"/g, '""') + '"';
+        }
+        
+        rowData.push(value);
+        
+        // For 2nd intimation, add Date Change Selection status after 9th column
+        if (currentIntimationType === '2nd' && index === committedDeliveryDateColumnIndex && committedDeliveryDateColumnIndex >= 0) {
+          const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+          const isDateChangeSelected = dateChangeSelectedRows.has(rowId);
+          rowData.push(isDateChangeSelected ? 'Yes' : 'No');
+        }
+      });
+      
+      // Add Select column status
+      const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID;
+      const isSelected = selectedRows.has(rowId);
+      rowData.push(isSelected ? 'Yes' : 'No');
+      
+      csvContent += rowData.join(',') + '\n';
+    });
+    
+    // Create blob and download
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel UTF-8 support
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const intimationType = currentIntimationType === '2nd' ? '2nd-Intimation' : '1st-Intimation';
+    const filename = `WhatsApp-${intimationType}-${timestamp}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+  }
+
   // Apply filters and sorting to data (only re-renders body, not header)
   function applyFiltersAndSort() {
     // Apply filters
@@ -2169,6 +2277,16 @@
     });
   } else {
     console.error('Send Delivery Date Update button element not found');
+  }
+  
+  // Export to Excel button click handler
+  if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', (e) => {
+      e.preventDefault();
+      exportToExcel();
+    });
+  } else {
+    console.error('Export to Excel button element not found');
   }
   
   // Confirmation modal handlers

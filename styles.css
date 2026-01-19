@@ -722,9 +722,14 @@ button.secondary:hover:not(:disabled) {
 .send-button-container {
   margin-top: 1.5rem;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 1rem;
   padding: 0.5rem 0;
+}
+
+.send-button-container .export-btn {
+  margin-right: auto;
 }
 
 .send-btn {
@@ -745,6 +750,35 @@ button.secondary:hover:not(:disabled) {
 }
 
 .send-btn:disabled {
+  background: var(--secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Export Button */
+.export-btn {
+  padding: 0.75rem 2rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+  font-family: inherit;
+}
+
+.export-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.export-btn:active {
+  transform: translateY(0);
+}
+
+.export-btn:disabled {
   background: var(--secondary);
   cursor: not-allowed;
   opacity: 0.6;
