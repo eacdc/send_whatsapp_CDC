@@ -686,72 +686,8 @@
       label.className = 'column-header-label';
       label.textContent = formatColumnName(key);
       label.style.flex = '1';
-      
-      // Sort buttons (only for 2nd intimation)
-      if (currentIntimationType === '2nd') {
-        const sortContainer = document.createElement('div');
-        sortContainer.className = 'sort-buttons';
-        sortContainer.style.display = 'flex';
-        sortContainer.style.flexDirection = 'column';
-        sortContainer.style.gap = '0.1rem';
-        
-        const sortAsc = document.createElement('button');
-        sortAsc.className = 'sort-btn sort-asc';
-        sortAsc.innerHTML = '▲';
-        sortAsc.title = 'Sort Ascending';
-        sortAsc.style.cssText = 'padding: 0.1rem 0.2rem; font-size: 0.6rem; line-height: 1; background: transparent; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; color: var(--muted);';
-        if (columnSorting[key] === 'asc') {
-          sortAsc.style.background = 'var(--primary)';
-          sortAsc.style.color = 'white';
-        }
-        sortAsc.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (columnSorting[key] === 'asc') {
-            columnSorting[key] = null;
-            sortAsc.style.background = 'transparent';
-            sortAsc.style.color = 'var(--muted)';
-          } else {
-            columnSorting[key] = 'asc';
-            sortAsc.style.background = 'var(--primary)';
-            sortAsc.style.color = 'white';
-            sortDesc.style.background = 'transparent';
-            sortDesc.style.color = 'var(--muted)';
-          }
-          applyFiltersAndSort();
-        });
-        
-        const sortDesc = document.createElement('button');
-        sortDesc.className = 'sort-btn sort-desc';
-        sortDesc.innerHTML = '▼';
-        sortDesc.title = 'Sort Descending';
-        sortDesc.style.cssText = 'padding: 0.1rem 0.2rem; font-size: 0.6rem; line-height: 1; background: transparent; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; color: var(--muted);';
-        if (columnSorting[key] === 'desc') {
-          sortDesc.style.background = 'var(--primary)';
-          sortDesc.style.color = 'white';
-        }
-        sortDesc.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (columnSorting[key] === 'desc') {
-            columnSorting[key] = null;
-            sortDesc.style.background = 'transparent';
-            sortDesc.style.color = 'var(--muted)';
-          } else {
-            columnSorting[key] = 'desc';
-            sortDesc.style.background = 'var(--primary)';
-            sortDesc.style.color = 'white';
-            sortAsc.style.background = 'transparent';
-            sortAsc.style.color = 'var(--muted)';
-          }
-          applyFiltersAndSort();
-        });
-        
-        sortContainer.appendChild(sortAsc);
-        sortContainer.appendChild(sortDesc);
-        labelContainer.appendChild(label);
-        labelContainer.appendChild(sortContainer);
-      } else {
-        labelContainer.appendChild(label);
-      }
+      // Sorting is disabled for 2nd intimation, so we only show the label
+      labelContainer.appendChild(label);
       
       headerDiv.appendChild(labelContainer);
       
