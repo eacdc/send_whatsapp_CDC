@@ -529,12 +529,15 @@
       
       if (currentIntimationType === '2nd') {
         // For 2nd intimation: Based on column mapping:
-        // Columns 0-15: shown (OrderDate through Qty Per Carton)
+        // Columns 0-15: shown (OrderDate through Del Qty)
         // Columns 16-20: hidden (DispatchScheduleID, OrderBookingDetailsID, OrderBookingID, JobBookingID, Last Dispatch Date)
         // Column 21: Segment Name (shown)
-        // So we show columns 0-15, then add column 21 (Segment Name)
-        if (allKeys.length >= 22) {
-          // Show first 16 columns (0-15), then add Segment Name (index 21)
+        // Column 22: GPN Qty (shown – added as very last column in SQL output)
+        if (allKeys.length >= 23) {
+          // New procedure with GPN Qty as last column: show first 16, then Segment Name (21), then GPN Qty (22)
+          columnsToShow = [...allKeys.slice(0, 16), allKeys[21], allKeys[22]];
+        } else if (allKeys.length >= 22) {
+          // Legacy (no GPN Qty): show first 16 columns, then Segment Name (index 21)
           columnsToShow = [...allKeys.slice(0, 16), allKeys[21]];
         } else if (allKeys.length > 6) {
           // Fallback: if structure is different, hide last 6 then add back the last one
@@ -1963,16 +1966,14 @@
         // Get selected rows with their data
         const selectedRowsData = [];
         
-        // Get the last 3 column keys (excluding Segment Name which is now the last column)
-        // For 2nd intimation: Segment Name is at the end, so we need columns at positions:
-        // - 3rd last: Readiness Date
-        // - 2nd last: Number of Cartons  
-        // - last (before Segment Name): Qty Per Carton
+        // Get column keys for material readiness (position from end)
+        // With GPN Qty as last column: last = GPN Qty, 2nd last = Segment Name → use -5, -4, -3 for Readiness, No of Cartons, Qty Per Carton
+        // Without GPN Qty (legacy): last = Segment Name → use -4, -3, -2
         const colsLength = columnsToShow.length;
-        // Segment Name is the last column, so we need to get columns before it
-        const readyForDispatchDateKey = colsLength >= 4 ? columnsToShow[colsLength - 4] : null; // 4th last (before Segment Name)
-        const noOfCartonKey = colsLength >= 3 ? columnsToShow[colsLength - 3] : null; // 3rd last
-        const qtyPerCartonKey = colsLength >= 2 ? columnsToShow[colsLength - 2] : null; // 2nd last (before Segment Name)
+        const hasGpnQtyColumn = colsLength >= 18; // 16 + Segment + GPN Qty
+        const readyForDispatchDateKey = hasGpnQtyColumn ? (colsLength >= 5 ? columnsToShow[colsLength - 5] : null) : (colsLength >= 4 ? columnsToShow[colsLength - 4] : null);
+        const noOfCartonKey = hasGpnQtyColumn ? (colsLength >= 4 ? columnsToShow[colsLength - 4] : null) : (colsLength >= 3 ? columnsToShow[colsLength - 3] : null);
+        const qtyPerCartonKey = hasGpnQtyColumn ? (colsLength >= 3 ? columnsToShow[colsLength - 3] : null) : (colsLength >= 2 ? columnsToShow[colsLength - 2] : null);
         
         filteredData.forEach((row, idx) => {
           const rowId = row.OrderBookingDetailsID || row.orderBookingDetailsID || `row-${idx}`;
