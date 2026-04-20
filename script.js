@@ -19,12 +19,27 @@
   function getApiBaseUrl() {
     try {
       const stored = localStorage.getItem('whatsapp_api_base');
-      const chosen = isValidAbsoluteUrl(stored) ? stored : DEFAULT_API_BASE;
+      if (isValidAbsoluteUrl(stored)) {
+        return stored.endsWith('/') ? stored : stored + '/';
+      }
+
+      // When opened locally (file:// or localhost), prefer local backend by default.
+      const protocol = window.location?.protocol || '';
+      const hostname = window.location?.hostname || '';
+      const isLocalRun =
+        protocol === 'file:' ||
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1';
+
+      const chosen = isLocalRun ? LOCAL_API_BASE : DEFAULT_API_BASE;
       return chosen.endsWith('/') ? chosen : chosen + '/';
     } catch (_) {
       return DEFAULT_API_BASE;
     }
   }
+
+  const ACTIVE_API_BASE = getApiBaseUrl();
+  console.log('[API BASE]', ACTIVE_API_BASE);
 
   function setButtonLoading(button, isLoading, loadingText = 'Loading...') {
     if (!button) return;
@@ -2089,10 +2104,12 @@
       
       const data = await response.json();
       
-      // console.log('Send response:', { status: response.status, data });
+      console.log('Send response:', { status: response.status, data });
       
       if (!response.ok) {
-        throw new Error(data.message || data.error || 'Failed to send messages');
+        const errMsg = data.message || data.error || `Server error ${response.status}`;
+        console.error('Server error details:', data);
+        throw new Error(errMsg);
       }
       
         // Success - show success message with details (only for 1st intimation)
